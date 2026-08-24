@@ -1,0 +1,1 @@
+# solico-app
