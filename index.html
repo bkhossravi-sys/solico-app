@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>solico group | سیستم مدیریت اعتبار و تخفیف شعب شمال</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Vazirmatn', 'Tahoma', 'sans-serif'] },
+          colors: {
+            solico: {
+              50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc',
+              400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1',
+              800: '#075985', 900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Vazirmatn', Tahoma, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; min-height: 100dvh; }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    .card-hover { transition: all 0.3s ease; }
+    @media (hover: hover) {
+      .card-hover:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(0,0,0,0.25); }
+    }
+    .sidebar-item { transition: all 0.2s; }
+    .sidebar-item:hover, .sidebar-item.active { background: rgba(14,165,233,0.2); border-right: 3px solid #0ea5e9; }
+    input, select, textarea { direction: rtl; font-size: 16px !important; } /* prevent iOS zoom */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #0ea5e9; border-radius: 3px; }
+    .city-chip { transition: all 0.3s; }
+    .city-chip.active { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; box-shadow: 0 0 20px rgba(14,165,233,0.5); transform: scale(1.05); }
+    .city-chip.inactive { background: rgba(51,65,85,0.5); color: #94a3b8; opacity: 0.5; }
+    .light-green { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; display: inline-block; }
+    .light-black { width: 12px; height: 12px; border-radius: 50%; background: #334155; display: inline-block; }
+    .btn-mini { padding: 0.375rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 500; transition: all 0.2s; }
+
+    /* Sidebar mobile */
+    #sidebar {
+      transition: transform 0.3s ease;
+    }
+    @media (max-width: 767px) {
+      #sidebar {
+        transform: translateX(100%);
+        width: 280px !important;
+      }
+      #sidebar.open {
+        transform: translateX(0);
+      }
+      #mainContent {
+        margin-right: 0 !important;
+      }
+      .mobile-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 30;
+      }
+      .mobile-overlay.show {
+        display: block;
+      }
+    }
+    @media (min-width: 768px) {
+      #sidebar { transform: none !important; }
+      .mobile-overlay { display: none !important; }
+      #menuBtn { display: none !important; }
+    }
+  </style>
+
+<style>
+.discount-table th, .discount-table td { padding-left: .25rem !important; padding-right: .25rem !important; white-space: nowrap; }
+.discount-table input { width: 4.2rem !important; padding-left: .25rem !important; padding-right: .25rem !important; }
+/* حذف فلش بالا/پایین input عددی */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.pct-input { direction: ltr; text-align: center; font-size: 16px !important; }
+</style>
+
+</head>
+<body class="text-white">
+  <!-- Login -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass rounded-3xl p-6 sm:p-8 md:p-12 w-full max-w-md shadow-2xl">
+      <div class="text-center mb-6 sm:mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-solico-500 to-solico-700 mb-4 shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black bg-gradient-to-l from-solico-300 to-solico-500 bg-clip-text text-transparent">solico group</h1>
+        <p class="text-slate-400 mt-2 text-xs sm:text-sm">سیستم مدیریت اعتبار و تخفیف شعب شمال ایران</p>
+      </div>
+      <form id="loginForm" class="space-y-4 sm:space-y-5">
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">نام کاربری</label>
+          <input type="text" id="username" required autocomplete="username" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 focus:ring-2 focus:ring-solico-500/30 outline-none transition" placeholder="نام کاربری">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">رمز عبور</label>
+          <input type="password" id="password" required autocomplete="current-password" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 focus:ring-2 focus:ring-solico-500/30 outline-none transition" placeholder="••••••••">
+        </div>
+        <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-l from-solico-600 to-solico-500 hover:from-solico-500 hover:to-solico-400 font-bold text-base sm:text-lg shadow-lg shadow-solico-500/30 transition active:scale-[0.98]">
+          ورود به سیستم
+        </button>
+      </form>
+      <div id="onlineBadge" class="mt-3 text-center text-xs">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/20 text-slate-300">در حال اتصال به سرور...</span>
+      </div>
+      <div class="mt-4 p-3 sm:p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 text-xs text-slate-400 space-y-1.5 text-center">
+        <p class="font-bold text-solico-400 mb-1">پشتیبانی</p>
+        <p>📱 <a href="tel:09197550997" class="text-white hover:text-solico-300">09197550997</a></p>
+        <p>✉️ <a href="mailto:behr.khosravi@solico-group.com" class="text-white hover:text-solico-300 break-all">behr.khosravi@solico-group.com</a></p>
+      </div>
+      <details class="mt-4 p-3 rounded-xl bg-slate-900/50 border border-slate-700 text-xs text-slate-400">
+        <summary class="cursor-pointer font-bold text-solico-400">راهنمای فعال‌سازی نسخه آنلاین (رایگان)</summary>
+        <ol class="mt-3 space-y-2 list-decimal list-inside text-slate-300">
+          <li>به <a href="https://console.firebase.google.com" target="_blank" class="text-solico-300 underline">console.firebase.google.com</a> بروید و با جیمیل وارد شوید.</li>
+          <li>پروژه جدید بسازید (نام دلخواه، مثلاً solico-north).</li>
+          <li>از منوی سمت چپ: <b>Build → Realtime Database</b> → Create Database → حالت <b>Test mode</b> → Enable.</li>
+          <li>از تنظیمات پروژه (چرخ‌دنده) → Project settings → بخش Your apps → Web (</> ) → ثبت اپ.</li>
+          <li>مقدارهای config را کپی کنید و داخل فایل index.html در بخش <code class="text-amber-300">FIREBASE_CONFIG</code> جایگزین کنید.</li>
+          <li>در Realtime Database → Rules این را بگذارید و Publish کنید:<br>
+            <code class="block mt-1 p-2 bg-slate-800 rounded text-[10px] text-left dir-ltr">{ "rules": { ".read": true, ".write": true } }</code>
+          </li>
+          <li>فایل را ذخیره و دوباره باز کنید. باید «آنلاین — همگام‌سازی فعال» ببینید.</li>
+        </ol>
+      </details>
+    </div>
+  </div>
+
+  <!-- Mobile Overlay -->
+  <div id="mobileOverlay" class="mobile-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main App -->
+  <div id="app" class="hidden min-h-screen flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 glass border-l border-slate-700 flex flex-col fixed h-full z-40">
+      <div class="p-4 sm:p-6 border-b border-slate-700 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-solico-500 to-solico-700 flex items-center justify-center">
+            <span class="font-black text-sm">S</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-sm">solico group</h2>
+            <p class="text-xs text-slate-400">شمال ایران</p>
+          </div>
+        </div>
+        <button onclick="closeSidebar()" class="md:hidden p-2 rounded-lg hover:bg-slate-700 text-slate-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <nav class="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto" id="sidebarNav"></nav>
+      <div class="p-3 sm:p-4 border-t border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-full bg-solico-600 flex items-center justify-center text-sm font-bold" id="userAvatar">A</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold truncate" id="userDisplayName">کاربر</p>
+            <p class="text-xs text-slate-400 truncate" id="userRoleLabel">نقش</p>
+          </div>
+        </div>
+        <button onclick="logout()" class="w-full py-2.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-medium transition active:scale-[0.98]">خروج از سیستم</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="flex-1 md:mr-64 min-h-screen">
+      <!-- Top Mobile Bar -->
+      <div class="sticky top-0 z-20 glass border-b border-slate-700 px-3 py-3 flex items-center gap-3 md:hidden">
+        <button id="menuBtn" onclick="openSidebar()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 transition">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="flex-1 min-w-0">
+          <h1 class="text-base font-bold truncate" id="pageTitleMobile">داشبورد</h1>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-lg bg-solico-600/30 text-solico-300 truncate max-w-[100px]" id="userCitiesLabelMobile">—</span>
+      </div>
+
+      <div class="p-3 sm:p-4 md:p-6">
+        <!-- Desktop Top bar + City Map -->
+        <div class="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+          <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 hidden md:flex">
+            <div>
+              <h1 class="text-lg sm:text-xl font-bold" id="pageTitle">داشبورد</h1>
+              <p class="text-xs sm:text-sm text-slate-400" id="pageSubtitle">خوش آمدید</p>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="px-3 py-1.5 rounded-lg bg-solico-600/30 text-solico-300 font-medium" id="userCitiesLabel">—</span>
+            </div>
+          </div>
+          <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
+            <p class="text-xs text-slate-400 mb-2 sm:mb-3">نقشه مینی‌مال شعب — شهرهای دسترسی شما روشن هستند</p>
+            <div id="cityMap" class="flex flex-wrap gap-1.5 sm:gap-2"></div>
+          </div>
+        </div>
+        <div id="contentArea" class="space-y-4 sm:space-y-6"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal for User Add/Edit -->
+  <div id="userModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="glass rounded-2xl p-5 sm:p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+      <h3 class="text-lg font-bold mb-4 sm:mb-5" id="userModalTitle">کاربر جدید</h3>
+      <form id="userForm" class="space-y-3 sm:space-y-4">
+        <input type="hidden" id="editUserId">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">نوع کاربر *</label>
+          <select id="uf_role" required class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm">
+            <option value="requester">درخواست کننده</option>
+            <option value="accountant">حسابدار نماینده</option>
+            <option value="admin">مدیر سیستم</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">نام شعبه *</label>
+          <select id="uf_branch" required class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm"></select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">سمت</label>
+          <input id="uf_position" class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm" placeholder="مثلاً کارشناس فروش">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">نام لاین *</label>
+          <select id="uf_line" required class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm">
+            <option value="">انتخاب لاین</option>
+            <option value="انجمادی">انجمادی</option>
+            <option value="سولیکو">سولیکو</option>
+            <option value="متفرقه">متفرقه</option>
+            <option value="بستنی">بستنی</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">نام کاربری *</label>
+          <input id="uf_username" required class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">رمز عبور *</label>
+          <input id="uf_password" required type="text" class="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600 outline-none focus:border-solico-500 text-sm">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 py-2.5 rounded-lg bg-solico-600 hover:bg-solico-500 font-bold text-sm active:scale-[0.98]">ذخیره</button>
+          <button type="button" onclick="closeUserModal()" class="px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">انصراف</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-4 left-4 right-4 sm:right-auto sm:left-6 z-50 hidden">
+    <div class="glass rounded-xl px-4 py-3 shadow-2xl border border-solico-500/30 text-sm text-center sm:text-right">
+      <span id="toastMsg"></span>
+    </div>
+  </div>
+
+  <script>
+    // ==================== CONSTANTS ====================
+    const SALES_LINES = [
+      { id: 'frozen', name: 'انجمادی' },
+      { id: 'solico', name: 'سولیکو' },
+      { id: 'misc', name: 'متفرقه' },
+      { id: 'icecream', name: 'بستنی' }
+    ];
+
+    const PRODUCT_GROUPS = [
+      { id: 'meat', name: 'Meat', fa: 'Meat' },
+      { id: 'sauceBucket', name: 'Souce bucket', fa: 'Souce bucket' },
+      { id: 'sauce', name: 'Souce', fa: 'Souce' },
+      { id: 'pemina', name: 'Pemina', fa: 'Pemina' },
+      { id: 'mak', name: 'Mak', fa: 'Mak' },
+      { id: 'aris', name: 'Aris', fa: 'Aris' },
+      { id: 'butter', name: 'Butter', fa: 'Butter' },
+      { id: 'iceCream', name: 'Ice cream', fa: 'Ice cream' }
+    ];
+
+    const BRANCHES = [
+      { id: 1, name: 'گرگان' }, { id: 2, name: 'گرگان 2' }, { id: 3, name: 'گنبد' },
+      { id: 4, name: 'بهشهر' }, { id: 5, name: 'قائمشهر' }, { id: 6, name: 'ساری' },
+      { id: 7, name: 'جویبار' }, { id: 8, name: 'آمل' }, { id: 9, name: 'تنکابن' },
+      { id: 10, name: 'محمودآباد' }, { id: 11, name: 'محمودآباد 2' }, { id: 12, name: 'فریدونکنار' }
+    ];
+
+    const DEFAULT_USERS = [
+      { id: 1, username: 'admin', password: 'admin123', role: 'admin', branchId: 6, position: 'مدیر سیستم', line: 'سراسری', name: 'مدیر سیستم' },
+      { id: 2, username: 'req_sari', password: '123', role: 'requester', branchId: 6, position: 'کارشناس فروش', line: 'سولیکو', name: 'درخواست‌کننده ساری' },
+      { id: 3, username: 'acc_sari', password: '123', role: 'accountant', branchId: 6, position: 'حسابدار', line: 'سولیکو', name: 'حسابدار ساری' },
+      { id: 4, username: 'req_amol', password: '123', role: 'requester', branchId: 8, position: 'کارشناس فروش', line: 'انجمادی', name: 'درخواست‌کننده آمل' },
+      { id: 5, username: 'acc_amol', password: '123', role: 'accountant', branchId: 8, position: 'حسابدار', line: 'انجمادی', name: 'حسابدار آمل' },
+      { id: 6, username: 'req_gorgan', password: '123', role: 'requester', branchId: 1, position: 'کارشناس فروش', line: 'متفرقه', name: 'درخواست‌کننده گرگان' },
+      { id: 7, username: 'acc_gorgan', password: '123', role: 'accountant', branchId: 1, position: 'حسابدار', line: 'متفرقه', name: 'حسابدار گرگان' }
+    ];
+
+    const DEFAULT_CUSTOMERS = [
+      { hasCredit: true, hasDiscount: true, code: 'C1001', name: 'فروشگاه مواد غذایی رضایی', city: 'ساری', address: 'خیابان انقلاب، پلاک ۱۲', creditDaily: 15, creditRial: 85000000, discounts: { meat: 5, sauce: 3, pemina: 4, mak: 2, celino: 3 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1002', name: 'سوپرمارکت آمل نوین', city: 'آمل', address: 'بلوار امام، جنب بانک ملی', creditDaily: 10, creditRial: 45000000, discounts: { meat: 4, sauce: 2, pemina: 5, mak: 3, celino: 2 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1003', name: 'پخش مواد غذایی گرگان', city: 'گرگان', address: 'میدان ولیعصر', creditDaily: 20, creditRial: 120000000, discounts: { meat: 6, sauce: 4, pemina: 3, mak: 4, celino: 5 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1004', name: 'فروشگاه زنجیره‌ای بهشهر', city: 'بهشهر', address: 'خیابان شریعتی', creditDaily: 8, creditRial: 32000000, discounts: { meat: 3, sauce: 2, pemina: 2, mak: 1, celino: 2 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1005', name: 'هایپرمارکت قائمشهر', city: 'قائمشهر', address: 'جاده ساری', creditDaily: 12, creditRial: 67000000, discounts: { meat: 5, sauce: 3, pemina: 4, mak: 2, celino: 3 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1006', name: 'سوپر تنکابن', city: 'تنکابن', address: 'خیابان امام خمینی', creditDaily: 7, creditRial: 28000000, discounts: { meat: 2, sauce: 1, pemina: 3, mak: 2, celino: 1 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1007', name: 'فروشگاه فریدونکنار', city: 'فریدونکنار', address: 'نزدیک اسکله', creditDaily: 5, creditRial: 18000000, discounts: { meat: 3, sauce: 2, pemina: 2, mak: 1, celino: 2 } },
+      { hasCredit: true, hasDiscount: true, code: 'C1008', name: 'پخش محمودآباد', city: 'محمودآباد', address: 'بلوار ساحلی', creditDaily: 9, creditRial: 41000000, discounts: { meat: 4, sauce: 3, pemina: 3, mak: 2, celino: 3 } }
+    ];
+
+    let currentUser = null;
+    let db = null;
+    let firebaseReady = false;
+    const cache = {}; // local cache for sync reads
+
+    // ==================== FIREBASE CONFIG ====================
+    // ⚠️ این بخش را بعد از ساخت پروژه Firebase پر کنید
+    // راهنما پایین صفحه لاگین و در README آمده است
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyA7HYj0aJod48sKFaUuHcM_2b3sPlTbGb0",
+      authDomain: "solico-north.firebaseapp.com",
+      databaseURL: "https://solico-north-default-rtdb.firebaseio.com",
+      projectId: "solico-north",
+      storageBucket: "solico-north.firebasestorage.app",
+      messagingSenderId: "457422513744",
+      appId: "1:457422513744:web:3e52d312357d14380e1355",
+      measurementId: "G-3KDSC4S993"
+    };
+
+    function isFirebaseConfigured() {
+      return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY"
+        && FIREBASE_CONFIG.databaseURL && !FIREBASE_CONFIG.databaseURL.includes("YOUR_PROJECT");
+    }
+
+    // ==================== STORAGE (Firebase + fallback local) ====================
+    // جلوگیری از بازنویسی دادهٔ تازه واردشده توسط listener قدیمی
+    const localWriteGuard = { customers: 0 };
+
+    function asArray(val) {
+      if (val == null) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'object') return Object.values(val);
+      return [];
+    }
+
+    function loadData(key, def) {
+      if (cache[key] !== undefined) {
+        return key === 'customers' ? asArray(cache[key]) : cache[key];
+      }
+      const raw = localStorage.getItem('solico3_' + key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          return key === 'customers' ? asArray(parsed) : parsed;
+        } catch (_) { /* ignore */ }
+      }
+      return def;
+    }
+
+    function saveData(key, data) {
+      if (key === 'customers') {
+        data = asArray(data);
+        localWriteGuard.customers = Date.now();
+      }
+      cache[key] = data;
+
+      // مشتریان بزرگ: اول سعی می‌کنیم localStorage؛ اگر جا نشد فقط حافظه + Firebase
+      if (key === 'customers') {
+        try {
+          localStorage.setItem('solico3_customers', JSON.stringify(data));
+          localStorage.setItem('solico3_customers_count', String(data.length));
+        } catch (err) {
+          console.warn('localStorage full for customers — only memory + Firebase', err);
+          try {
+            localStorage.setItem('solico3_customers_count', String(data.length));
+          } catch (_) { /* ignore */ }
+        }
+      } else {
+        try {
+          localStorage.setItem('solico3_' + key, JSON.stringify(data));
+        } catch (err) {
+          console.warn('localStorage quota exceeded for', key, err);
+        }
+      }
+
+      if (firebaseReady && db) {
+        // برای مشتریان: به‌صورت آبجکت با کلید عددی ذخیره می‌شود تا Firebase پایدارتر باشد
+        const payload = key === 'customers'
+          ? asArray(data).reduce((acc, item, i) => { acc[i] = item; return acc; }, {})
+          : data;
+        return db.ref(key).set(payload).then(() => {
+          console.log('Firebase write OK:', key, key === 'customers' ? `(${asArray(data).length})` : '');
+          return true;
+        }).catch(err => {
+          console.error('Firebase write error', key, err);
+          // تلاش دوم برای مشتریان بزرگ
+          if (key === 'customers') {
+            showToast('تلاش مجدد برای ذخیره در سرور...');
+            return db.ref(key).set(payload).then(() => true).catch(err2 => {
+              console.error('Firebase retry failed', err2);
+              showToast('⚠ ذخیره در سرور انجام نشد — Rules و اینترنت را چک کنید');
+              return false;
+            });
+          }
+          showToast('خطا در ذخیره اطلاعات');
+          return false;
+        });
+      }
+      if (key === 'customers' && !firebaseReady) {
+        console.warn('Firebase is not ready; customers are only in memory/localStorage.');
+        showToast('حالت آفلاین: مشتریان فقط روی همین مرورگر ذخیره شدند');
+      }
+      return Promise.resolve(!!cache[key]);
+    }
+
+    function initFirebase() {
+      if (!isFirebaseConfigured()) {
+        console.warn('Firebase config not set — using localStorage only');
+        if (!localStorage.getItem('solico3_users')) {
+          saveData('users', DEFAULT_USERS);
+          saveData('customers', DEFAULT_CUSTOMERS);
+          saveData('creditRequests', []);
+          saveData('discountRequests', []);
+          saveData('otherRequests', []);
+        }
+        ['users','customers','creditRequests','discountRequests','otherRequests'].forEach(k => {
+          cache[k] = loadData(k, k === 'users' ? DEFAULT_USERS : (k === 'customers' ? DEFAULT_CUSTOMERS : []));
+        });
+        firebaseReady = false;
+        return Promise.resolve(false);
+      }
+
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.database();
+        firebaseReady = true;
+
+        const keys = ['users', 'customers', 'creditRequests', 'discountRequests', 'otherRequests'];
+        const promises = keys.map(key => {
+          return new Promise((resolve) => {
+            db.ref(key).on('value', (snap) => {
+              const val = snap.val();
+              if (val === null) {
+                // هرگز مشتریان نمونه را روی سرور خالی ننویس — لیست خالی بماند تا import واقعی بماند
+                const existing = cache[key];
+                const existingArr = key === 'customers' ? asArray(existing) : existing;
+                if (key === 'customers' && existingArr && existingArr.length > 0) {
+                  const payload = existingArr.reduce((acc, item, i) => { acc[i] = item; return acc; }, {});
+                  db.ref(key).set(payload);
+                  cache[key] = existingArr;
+                } else if (key === 'users' && (!existing || !existing.length)) {
+                  db.ref(key).set(DEFAULT_USERS);
+                  cache[key] = DEFAULT_USERS;
+                } else if (key !== 'customers' && key !== 'users') {
+                  if (cache[key] === undefined) {
+                    db.ref(key).set([]);
+                    cache[key] = [];
+                  }
+                } else if (key === 'customers' && cache[key] === undefined) {
+                  cache[key] = [];
+                }
+              } else {
+                const incoming = key === 'customers' ? asArray(val) : val;
+                // اگر همین الان import محلی انجام شده و دادهٔ سرور کوچک‌تر/خالی است، نادیده بگیر
+                if (key === 'customers') {
+                  const localArr = asArray(cache.customers);
+                  const guardMs = Date.now() - (localWriteGuard.customers || 0);
+                  if (guardMs < 15000 && localArr.length > incoming.length) {
+                    console.warn('Ignored stale/empty Firebase customers snapshot', incoming.length, '<', localArr.length);
+                    resolve();
+                    return;
+                  }
+                }
+                cache[key] = incoming;
+                if (key === 'customers') {
+                  try {
+                    localStorage.setItem('solico3_customers', JSON.stringify(incoming));
+                    localStorage.setItem('solico3_customers_count', String(incoming.length));
+                  } catch (err) {
+                    console.warn('localStorage quota exceeded for customers', err);
+                  }
+                } else {
+                  try {
+                    localStorage.setItem('solico3_' + key, JSON.stringify(incoming));
+                  } catch (err) {
+                    console.warn('localStorage quota exceeded for', key, err);
+                  }
+                }
+              }
+              resolve();
+            }, (err) => {
+              console.error('Firebase listen error', key, err);
+              resolve();
+            });
+          });
+        });
+
+        // اگر تا ۸ ثانیه جواب نداد، باز هم ادامه بده (نشون وضعیت قطع نشود)
+        const timeout = new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000));
+        return Promise.race([Promise.all(promises).then(() => true), timeout]).then((result) => {
+          if (result === 'timeout') {
+            console.warn('Firebase listen timeout — ادامه با حالت فعلی');
+            return firebaseReady;
+          }
+          return !!result;
+        });
+      } catch (e) {
+        console.error('Firebase init failed', e);
+        firebaseReady = false;
+        return Promise.resolve(false);
+      }
+    }
+
+
+    // ==================== AUTH ====================
+    function refreshCurrentUserFromStore(baseUser) {
+      if (!baseUser) return null;
+      try {
+        const users = loadData('users', DEFAULT_USERS);
+        const arr = Array.isArray(users) ? users : Object.values(users || {});
+        const fresh = arr.find(u => u && (u.id === baseUser.id || u.username === baseUser.username));
+        return fresh || baseUser;
+      } catch (_) {
+        return baseUser;
+      }
+    }
+    function login(username, password) {
+      const users = loadData('users', DEFAULT_USERS);
+      const arr = Array.isArray(users) ? users : Object.values(users || {});
+      const user = arr.find(u => u.username === username && u.password === password);
+      if (!user) { showToast('نام کاربری یا رمز عبور اشتباه است'); return; }
+      currentUser = user;
+      localStorage.setItem('solico3_session', JSON.stringify(user));
+      showApp();
+    }
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('solico3_session');
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      closeSidebar();
+    }
+    function checkSession() {
+      const s = localStorage.getItem('solico3_session');
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          currentUser = refreshCurrentUserFromStore(parsed);
+          localStorage.setItem('solico3_session', JSON.stringify(currentUser));
+          showApp();
+        } catch (_) {
+          localStorage.removeItem('solico3_session');
+        }
+      }
+    }
+
+    // ==================== MOBILE SIDEBAR ====================
+    function openSidebar() {
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('mobileOverlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('mobileOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    // ==================== HELPERS ====================
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3200);
+    }
+    function roleLabel(r) {
+      return { admin: 'مدیر سیستم', requester: 'درخواست کننده', accountant: 'حسابدار نماینده' }[r] || r;
+    }
+    function statusBadge(s) {
+      const m = {
+        pending: ['bg-amber-500/20 text-amber-300', 'در انتظار حسابدار'],
+        pending_manager: ['bg-blue-500/20 text-blue-300', 'در انتظار مدیر سیستم'],
+        approved: ['bg-emerald-500/20 text-emerald-300', 'تایید حسابدار'],
+        rejected: ['bg-red-500/20 text-red-300', 'رد شده'],
+        done: ['bg-slate-500/20 text-slate-400', 'اعمال شده']
+      };
+      const [cls, lbl] = m[s] || ['bg-slate-500/20 text-slate-300', s];
+      return `<span class="px-2.5 py-1 rounded-full text-xs font-bold ${cls}">${lbl}</span>`;
+    }
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+    function formatNumber(n) {
+      return Number(n).toLocaleString('fa-IR');
+    }
+    /** نمایش حرفه‌ای تخفیف در کارتابل: نام گروه | از X٪ به Y٪ */
+    function renderDiscountCards(currentDiscounts, reqDiscounts, onlyRequested = false) {
+      const groups = onlyRequested
+        ? PRODUCT_GROUPS.filter(g => reqDiscounts && Number(reqDiscounts[g.id]) > 0)
+        : PRODUCT_GROUPS;
+      if (!groups.length) return '<p class="text-xs text-slate-500">موردی ثبت نشده</p>';
+      return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+        ${groups.map(g => {
+          const cur = Number(currentDiscounts?.[g.id] || 0);
+          const req = Number(reqDiscounts?.[g.id] ?? cur);
+          const up = req > cur;
+          const down = req < cur;
+          const ring = up ? 'border-emerald-500/35 bg-emerald-500/[0.07]'
+            : down ? 'border-amber-500/35 bg-amber-500/[0.07]'
+            : 'border-slate-700/80 bg-slate-900/50';
+          const reqColor = up ? 'text-emerald-400' : down ? 'text-amber-300' : 'text-white';
+          return `<div class="rounded-xl border ${ring} px-2.5 py-2.5 text-center">
+            <div class="text-[11px] text-slate-300 font-semibold leading-tight mb-2 truncate" title="${g.fa}">${g.fa}</div>
+            <div class="text-[11px] text-slate-400 leading-none mb-0.5">از <span class="text-white font-medium">${cur}٪</span></div>
+            <div class="text-sm font-black ${reqColor} leading-tight">به ${req}٪</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    /** تخفیف فعلی مینی‌مال یک ردیف: نام گروه بالا، درصد سفید زیرش */
+    function renderCurrentDiscountRow(discounts) {
+      return `<div class="flex flex-wrap gap-1.5">
+        ${PRODUCT_GROUPS.map(g => {
+          const cur = Number(discounts?.[g.id] || 0);
+          return `<div class="flex flex-col items-center justify-center min-w-[3.2rem] px-2 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/80">
+            <span class="text-[10px] text-slate-400 leading-none mb-1 truncate max-w-[4.2rem]" title="${g.fa}">${g.fa}</span>
+            <span class="text-xs font-bold text-white leading-none">${cur}%</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    function normalizeSearch(v) {
+      return String(v ?? '')
+        .replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, '') // حذف نیم‌فاصله و کاراکترهای نامرئی
+        .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+        .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+        .replace(/[يى]/g, 'ی').replace(/ك/g, 'ک')
+        .replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function getCustomer(codeOrName, type = 'all') {
+      const q = normalizeSearch(codeOrName);
+      if (!q) return null;
+      const list = loadData('customers', []);
+      const arr = Array.isArray(list) ? list : Object.values(list || {});
+      const eligible = arr.filter(c => type === 'credit' ? c.hasCredit !== false : type === 'discount' ? c.hasDiscount === true : true);
+      const exact = eligible.find(c => normalizeSearch(c.code) === q);
+      if (exact) return exact;
+      return eligible.find(c => normalizeSearch(c.code).includes(q) || normalizeSearch(c.name).includes(q)) || null;
+    }
+
+    function customerSearchOptions(listId, type = 'all') {
+      const list = loadData('customers', []);
+      const customers = Array.isArray(list) ? list : Object.values(list || {});
+      const eligible = customers.filter(c => type === 'credit' ? c.hasCredit !== false : type === 'discount' ? c.hasDiscount === true : true);
+      return `<datalist id="${listId}">${eligible.map(c =>
+        `<option value="${String(c.code || '').replace(/\"/g,'&quot;')}">${String(c.name || '')} — ${String(c.city || '')}</option>`
+      ).join('')}</datalist>`;
+    }
+
+    function getBranchName(id) {
+      return BRANCHES.find(b => b.id === Number(id))?.name || '—';
+    }
+    function getBranchIdByName(name) {
+      const q = normalizeSearch(name);
+      if (!q) return null;
+      // تطابق دقیق
+      let hit = BRANCHES.find(b => normalizeSearch(b.name) === q);
+      if (hit) return hit.id;
+      // تطابق جزئی (مثلاً «شعبه ساری» یا «ساری مرکزی»)
+      hit = BRANCHES.find(b => {
+        const bn = normalizeSearch(b.name);
+        return q.includes(bn) || bn.includes(q);
+      });
+      if (hit) return hit.id;
+      // برای گرگان 2 / محمودآباد 2 اگر فقط عدد فرق دارد
+      hit = BRANCHES.find(b => {
+        const bn = normalizeSearch(b.name).replace(/\s+/g, '');
+        const qn = q.replace(/\s+/g, '');
+        return bn === qn;
+      });
+      return hit ? hit.id : null;
+    }
+    function allowedBranchNames() {
+      return BRANCHES.map(b => b.name).join('، ');
+    }
+    function getCustomerLineRecords(code, type = 'all') {
+      const q = normalizeSearch(code);
+      const list = loadData('customers', []);
+      const arr = Array.isArray(list) ? list : Object.values(list || {});
+      if (!q) return [];
+      // اول تطابق دقیق کد، بعد شامل بودن کد/نام
+      let hits = arr.filter(c => normalizeSearch(c.code) === q);
+      if (!hits.length) {
+        hits = arr.filter(c =>
+          normalizeSearch(c.code).includes(q) ||
+          normalizeSearch(c.name).includes(q)
+        );
+      }
+      // اعتبار و تخفیف: همه رکوردهای همان مشتری (حتی اگر فلگ تخفیف false باشد)
+      return hits;
+    }
+    function customerCodeOptions(listId, type = 'all') {
+      const list = loadData('customers', []);
+      const arr = Array.isArray(list) ? list : Object.values(list || {});
+      // همه مشتریان برای هر دو نوع درخواست قابل جستجو هستند
+      const grouped = new Map();
+      arr.forEach(c => {
+        const code = String(c.code || '').trim();
+        if (!code) return;
+        if (!grouped.has(code)) grouped.set(code, {name:String(c.name||'').trim(), lines:new Set()});
+        const g = grouped.get(code);
+        if (!g.name && c.name) g.name = String(c.name).trim();
+        if (c.line) g.lines.add(String(c.line).trim());
+      });
+      const opts = [];
+      grouped.forEach((g, code) => {
+        const label = [g.name, [...g.lines].join(' | ')].filter(Boolean).join(' — ');
+        opts.push(`<option value="${escapeHtml(code)}" label="${escapeHtml(label)}">${escapeHtml(label)}</option>`);
+      });
+      return `<datalist id="${listId}">${opts.join('')}</datalist>`;
+    }
+
+    function getCustomerSearchRows(type = 'all') {
+      const list = loadData('customers', []);
+      const arr = Array.isArray(list) ? list : Object.values(list || {});
+      const grouped = new Map();
+      arr.forEach(c => {
+        const code = String(c.code || '').trim();
+        if (!code) return;
+        if (!grouped.has(code)) grouped.set(code,{code,name:String(c.name||'').trim(),lines:new Set()});
+        const g = grouped.get(code);
+        if (!g.name && c.name) g.name=String(c.name).trim();
+        if (c.line) g.lines.add(String(c.line).trim());
+      });
+      return [...grouped.values()].map(x => ({...x,lines:[...x.lines]}));
+    }
+
+    function parseFormattedNumber(v) {
+      const s = String(v ?? '')
+        .replace(/,/g, '').replace(/٬/g, '').replace(/ /g, '')
+        .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+        .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+        .trim();
+      if (!s) return 0;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+    function formatRialInput(el) {
+      if (!el) return;
+      const n = parseFormattedNumber(el.value);
+      if (!el.value || String(el.value).trim() === '') { el.value = ''; return; }
+      el.value = n.toLocaleString('en-US');
+    }
+    function bindRialInputs(root) {
+      (root || document).querySelectorAll('input[data-rial="1"]').forEach(el => {
+        el.addEventListener('input', () => {
+          const pos = el.selectionStart;
+          const oldLen = el.value.length;
+          formatRialInput(el);
+          const newLen = el.value.length;
+          try { el.setSelectionRange(pos + (newLen - oldLen), pos + (newLen - oldLen)); } catch (_) {}
+        });
+        el.addEventListener('blur', () => formatRialInput(el));
+      });
+    }
+
+    function refreshCustomerSearchInfo(inputId,type) {
+      const input=document.getElementById(inputId);
+      if(!input)return;
+      const q=normalizeSearch(input.value||'');
+      if(!q){input.title='کد، نام مشتری یا نام لاین را جستجو کنید';return;}
+      const hit=getCustomerSearchRows(type).find(r =>
+        normalizeSearch(r.code).includes(q) ||
+        normalizeSearch(r.name).includes(q) ||
+        r.lines.some(l=>normalizeSearch(l).includes(q))
+      );
+      input.title=hit ? `${hit.code} — ${hit.name||''} — ${hit.lines.join(' | ')}` : 'مشتری پیدا نشد';
+    }
+    function escapeHtml(v) {
+      return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function userBranches(user) {
+      if (user.role === 'admin') return BRANCHES.map(b => b.id);
+      return [user.branchId];
+    }
+    /** لاین فروش کاربر از بین ۴ لاین — admin → null (همه) | بدون لاین معتبر → '__NONE__' */
+    function userSalesLine(user) {
+      if (!user) return '__NONE__';
+      if (user.role === 'admin') return null;
+      // همیشه از لیست به‌روز کاربران بخوان (نه فقط session قدیمی)
+      let line = user.line;
+      try {
+        const users = loadData('users', []);
+        const arr = Array.isArray(users) ? users : Object.values(users || {});
+        const fresh = arr.find(u => u && (u.id === user.id || u.username === user.username));
+        if (fresh && fresh.line) line = fresh.line;
+      } catch (_) { /* ignore */ }
+      const raw = String(line || '').trim().replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, '');
+      if (!raw) return '__NONE__';
+      const q = normalizeSearch(raw);
+      const hit = SALES_LINES.find(l => {
+        const ln = normalizeSearch(l.name);
+        return q === ln || q.includes(ln) || ln.includes(q);
+      });
+      // فقط اگر دقیقاً یکی از ۴ لاین باشد اجازه می‌دهد
+      return hit ? hit.name : '__NONE__';
+    }
+    function canAccessCustomerLine(customerLine) {
+      const allowed = userSalesLine(currentUser);
+      if (allowed == null) return true; // فقط مدیر سیستم
+      if (allowed === '__NONE__') return false;
+      const cl = String(customerLine || '').trim().replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, '');
+      if (!cl) return false;
+      return normalizeSearch(allowed) === normalizeSearch(cl);
+    }
+    function lineAccessError(customerLine) {
+      const allowed = userSalesLine(currentUser);
+      if (allowed === '__NONE__' || !allowed) {
+        return 'لاین شما در مدیریت کاربران تنظیم نشده است. از مدیر بخواهید لاین شما را (سولیکو / انجمادی / متفرقه / بستنی) مشخص کند.';
+      }
+      return `شما فقط به لاین «${allowed}» دسترسی دارید و نمی‌توانید برای لاین «${customerLine || '—'}» درخواست ثبت کنید.`;
+    }
+
+    // ==================== CITY MAP ====================
+    function renderCityMap() {
+      const el = document.getElementById('cityMap');
+      const ids = userBranches(currentUser);
+      el.innerHTML = BRANCHES.map(b => {
+        const active = ids.includes(b.id);
+        return `<div class="city-chip px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium ${active ? 'active' : 'inactive'}">${b.name}</div>`;
+      }).join('');
+    }
+
+    // ==================== SIDEBAR ====================
+    function buildSidebar() {
+      const nav = document.getElementById('sidebarNav');
+      let items = [
+        { id: 'credit', label: 'درخواست اعتبار', icon: '💰' },
+        { id: 'discount', label: 'درخواست تخفیف', icon: '🏷️' },
+        { id: 'other', label: 'سایر درخواست‌ها', icon: '📝' },
+        { id: 'history', label: 'تاریخچه درخواست‌ها', icon: '📜' }
+      ];
+      if (currentUser.role === 'accountant' || currentUser.role === 'admin') {
+        items.push({ id: 'accountantInbox', label: 'کارتابل حسابدار', icon: '📋' });
+      }
+      if (currentUser.role === 'admin') {
+        items.push({ id: 'managerInbox', label: 'کارتابل مدیر سیستم', icon: '🗂️' });
+        items.push({ id: 'otherInbox', label: 'کارتابل سایر درخواست‌ها', icon: '📥' });
+        items.push({ id: 'customers', label: 'مدیریت مشتریان', icon: '📊' });
+        items.push({ id: 'users', label: 'مدیریت کاربران', icon: '👥' });
+      }
+      nav.innerHTML = items.map((it, i) => `
+        <button onclick="navigate('${it.id}')" class="sidebar-item w-full text-right px-4 py-3 rounded-xl flex items-center gap-3 ${i===0?'active':''}" data-page="${it.id}">
+          <span class="text-lg">${it.icon}</span>
+          <span class="text-sm font-medium">${it.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function navigate(page) {
+      document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+      const btn = document.querySelector(`[data-page="${page}"]`);
+      if (btn) btn.classList.add('active');
+      closeSidebar(); // close on mobile after click
+
+      const titles = {
+        credit: ['درخواست اعتبار', 'ثبت درخواست اعتبار برای مشتری'],
+        discount: ['درخواست تخفیف', 'ثبت درخواست تخفیف گروه‌های محصول'],
+        other: ['سایر درخواست‌ها', 'ثبت درخواست متفرقه برای مدیر سیستم'],
+        history: ['تاریخچه درخواست‌ها', 'وضعیت و زمان اقدام حسابدار و مدیر'],
+        accountantInbox: ['کارتابل حسابدار', 'تایید یا رد درخواست‌های در انتظار'],
+        managerInbox: ['کارتابل مدیر سیستم', 'اعمال نهایی درخواست‌های تایید شده'],
+        otherInbox: ['کارتابل سایر درخواست‌ها', 'مشاهده درخواست‌های متفرقه'],
+        customers: ['مدیریت مشتریان', 'ورود و خروج اکسل اعتبار و تخفیف'],
+        users: ['مدیریت کاربران', 'افزودن و ویرایش کاربران']
+      };
+      document.getElementById('pageTitle').textContent = titles[page]?.[0] || '';
+      document.getElementById('pageSubtitle').textContent = titles[page]?.[1] || '';
+      const mobTitle = document.getElementById('pageTitleMobile');
+      if (mobTitle) mobTitle.textContent = titles[page]?.[0] || '';
+
+      const area = document.getElementById('contentArea');
+      if (page === 'credit') renderCreditForm(area);
+      else if (page === 'discount') renderDiscountForm(area);
+      else if (page === 'other') renderOtherForm(area);
+      else if (page === 'history') renderHistory(area);
+      else if (page === 'accountantInbox') renderAccountantInbox(area);
+      else if (page === 'managerInbox') renderManagerInbox(area);
+      else if (page === 'otherInbox') renderOtherInbox(area);
+      else if (page === 'customers') renderCustomers(area);
+      else if (page === 'users') renderUsers(area);
+    }
+
+    // ==================== CREDIT FORM ====================
+    function renderCreditForm(container) {
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-3xl mx-auto">
+          <h3 class="text-base sm:text-lg font-bold mb-3 sm:mb-4">فرم درخواست اعتبار</h3>
+          <div class="mb-3 sm:mb-4">
+            <label class="block text-sm text-slate-300 mb-2">کد / نام مشتری *</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="creditSearch" list="creditCustomerCodes" autocomplete="off" inputmode="search" class="flex-1 w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 outline-none text-base" placeholder="کد یا نام مشتری...">
+              ${customerCodeOptions('creditCustomerCodes','credit')}
+              <button type="button" onclick="loadCreditCustomerLines()" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-solico-600 font-medium shrink-0">ادامه</button>
+            </div>
+          </div>
+          <div id="creditLineBox" class="hidden mb-3 sm:mb-4">
+            <label class="block text-sm text-slate-300 mb-2">انتخاب لاین *</label>
+            <select id="creditLineSelect" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 outline-none text-base">
+              <option value="">لاین را انتخاب کنید</option>
+            </select>
+          </div>
+          <div id="creditCustomerInfo" class="hidden mb-4">
+            <div class="grid grid-cols-2 gap-2 text-sm p-3 rounded-xl bg-slate-900/50 border border-slate-700">
+              <div><span class="text-slate-400 text-xs">شعبه</span><p id="ci_branch" class="font-medium"></p></div>
+              <div><span class="text-slate-400 text-xs">لاین</span><p id="ci_line" class="font-medium"></p></div>
+              <div><span class="text-slate-400 text-xs">کد</span><p id="ci_code" class="font-mono text-solico-300"></p></div>
+              <div><span class="text-slate-400 text-xs">شهر</span><p id="ci_city"></p></div>
+              <div class="col-span-2"><span class="text-slate-400 text-xs">نام</span><p id="ci_name" class="font-bold"></p></div>
+              <div><span class="text-slate-400 text-xs">اعتبار روزانه</span><p id="ci_daily" class="text-amber-300"></p></div>
+              <div><span class="text-slate-400 text-xs">فاکتور باز</span><p id="ci_open" class="text-amber-300"></p></div>
+              <div class="col-span-2"><span class="text-slate-400 text-xs">اعتبار ریالی</span><p id="ci_rial" class="text-amber-300"></p></div>
+              <div class="col-span-2"><span class="text-slate-400 text-xs">آدرس</span><p id="ci_address" class="text-xs text-slate-300"></p></div>
+            </div>
+          </div>
+          <form id="creditForm" class="space-y-3 hidden">
+            <div class="p-3 sm:p-4 rounded-xl bg-slate-900/50 border border-solico-500/30 space-y-3">
+              <p class="text-sm font-bold text-solico-300">اعتبار درخواستی جدید</p>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">اعتبار روز</label>
+                <input type="number" name="reqDayCredit" min="0" inputmode="numeric" class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-base" placeholder="مثلاً ۵">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">تعداد فاکتور</label>
+                <input type="number" name="reqInvoices" min="0" inputmode="numeric" class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-base" placeholder="مثلاً ۱۰">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">اعتبار ریالی</label>
+                <input type="text" name="reqRial" data-rial="1" inputmode="numeric" class="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-600 text-base" placeholder="مثلاً ۵۰۰,۰۰۰,۰۰۰">
+              </div>
+            </div>
+            <textarea name="notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 text-base" placeholder="توضیحات (اختیاری)"></textarea>
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-solico-600 font-bold text-base sticky bottom-2 shadow-lg">ثبت و ارسال به کارتابل حسابدار</button>
+          </form>
+        </div>`;
+      document.getElementById('creditLineSelect').addEventListener('change', showSelectedCreditCustomer);
+      document.getElementById('creditSearch').addEventListener('input', () => refreshCustomerSearchInfo('creditSearch','credit'));
+      document.getElementById('creditSearch').addEventListener('change', loadCreditCustomerLines);
+      bindRialInputs(container);
+    }
+
+    function loadCreditCustomerLines() {
+      const records = getCustomerLineRecords(document.getElementById('creditSearch').value.trim(),'credit');
+      const box = document.getElementById('creditLineBox'), sel = document.getElementById('creditLineSelect');
+      document.getElementById('creditCustomerInfo').classList.add('hidden');
+      document.getElementById('creditForm').classList.add('hidden');
+      sel.innerHTML = '<option value="">لاین را انتخاب کنید</option>';
+      if (!records.length) { box.classList.add('hidden'); showToast('کد مشتری پیدا نشد'); return; }
+
+      let added = 0;
+      let blockedOtherLine = false;
+      records.forEach((c, index) => {
+        const line = String(c.line || '').trim();
+        const branchId = Number(c.branchId || getBranchIdByName(c.branchName) || 0);
+        const branch = c.branchName || getBranchName(branchId) || '';
+        const key = `${branchId}||${normalizeSearch(line)}||${index}`;
+        if (!line) return;
+        if (!canAccessCustomerLine(line)) { blockedOtherLine = true; return; }
+        sel.insertAdjacentHTML('beforeend',
+          `<option value="${escapeHtml(key)}" data-index="${index}">${escapeHtml(line)}${branch ? ' — ' + escapeHtml(branch) : ''}</option>`
+        );
+        added++;
+      });
+
+      if (!added) {
+        box.classList.add('hidden');
+        showToast(blockedOtherLine
+          ? ('این مشتری فقط در لاین دیگر است. ' + lineAccessError(records.find(c => c.line)?.line))
+          : 'کد مشتری پیدا نشد');
+        return;
+      }
+
+      box.classList.remove('hidden');
+      if (added === 1) {
+        const opt = sel.options[1];
+        if (opt) { sel.value = opt.value; showSelectedCreditCustomer(); }
+      }
+    }
+
+    function showSelectedCreditCustomer() {
+      const code = document.getElementById('creditSearch').value.trim();
+      const sel = document.getElementById('creditLineSelect');
+      const selected = sel.options[sel.selectedIndex];
+      const records = getCustomerLineRecords(code,'credit');
+      const recordIndex = selected ? Number(selected.dataset.index) : -1;
+      const cust = recordIndex >= 0 ? records[recordIndex] : null;
+      const info = document.getElementById('creditCustomerInfo'), form = document.getElementById('creditForm');
+      if (!cust) { info.classList.add('hidden'); form.classList.add('hidden'); return; }
+      const branchId = Number(cust.branchId || getBranchIdByName(cust.branchName) || 0);
+      if (currentUser.role !== 'admin' && branchId && !userBranches(currentUser).includes(branchId)) {
+        showToast('به شعبه این مشتری دسترسی ندارید'); info.classList.add('hidden'); form.classList.add('hidden'); return;
+      }
+      if (!canAccessCustomerLine(cust.line)) {
+        showToast(lineAccessError(cust.line));
+        info.classList.add('hidden'); form.classList.add('hidden');
+        return;
+      }
+      document.getElementById('ci_branch').textContent = cust.branchName || getBranchName(branchId);
+      document.getElementById('ci_line').textContent = cust.line || '—';
+      document.getElementById('ci_code').textContent = cust.code || '—';
+      document.getElementById('ci_name').textContent = cust.name || '—';
+      document.getElementById('ci_city').textContent = cust.city || '—';
+      document.getElementById('ci_daily').textContent = formatNumber(cust.creditDaily || 0);
+      document.getElementById('ci_open').textContent = formatNumber(cust.openInvoices ?? cust.openInvoiceCount ?? cust.creditInvoices ?? 0);
+      document.getElementById('ci_rial').textContent = formatNumber(cust.creditRial || 0);
+      document.getElementById('ci_address').textContent = cust.address || '—';
+      info.classList.remove('hidden'); form.classList.remove('hidden');
+      bindRialInputs(form);
+
+      form.onsubmit = e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const reqDayCredit = parseFormattedNumber(fd.get('reqDayCredit'));
+        const reqInvoices = parseFormattedNumber(fd.get('reqInvoices'));
+        const reqRial = parseFormattedNumber(fd.get('reqRial'));
+        if (reqDayCredit <= 0 && reqInvoices <= 0 && reqRial <= 0) { showToast('حداقل یکی از مقادیر را وارد کنید'); return; }
+        const branchId = Number(cust.branchId || getBranchIdByName(cust.branchName) || currentUser.branchId);
+        const list = loadData('creditRequests', []);
+        list.unshift({
+          id: Date.now(), type:'credit', customerCode:cust.code, customerName:cust.name, line:cust.line || '',
+          branchId, branchName:cust.branchName || getBranchName(branchId), city:cust.city || '', address:cust.address || '',
+          currentDaily:cust.creditDaily || 0, currentOpenInvoices:cust.openInvoices ?? cust.openInvoiceCount ?? cust.creditInvoices ?? 0, currentRial:cust.creditRial || 0,
+          reqDayCredit, reqInvoices, reqRial, notes:fd.get('notes') || '', requestedBy:currentUser.id, requestedByName:currentUser.name || currentUser.username,
+          status:'pending', createdAt:new Date().toISOString(), history:[{action:'created',by:currentUser.name || currentUser.username,at:new Date().toISOString()}]
+        });
+        saveData('creditRequests', list); showToast('درخواست اعتبار به کارتابل حسابدار ارسال شد');
+        e.target.reset(); info.classList.add('hidden'); form.classList.add('hidden'); document.getElementById('creditLineBox').classList.add('hidden'); document.getElementById('creditSearch').value='';
+      };
+    }
+
+    // ==================== DISCOUNT FORM ====================
+    function renderDiscountForm(container) {
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-3xl mx-auto">
+          <h3 class="text-base sm:text-lg font-bold mb-3 sm:mb-4">فرم درخواست تخفیف</h3>
+          <div class="mb-3 sm:mb-4">
+            <label class="block text-sm text-slate-300 mb-2">کد / نام مشتری *</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="discSearch" list="discountCustomerCodes" autocomplete="off" inputmode="search" class="flex-1 w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 outline-none text-base" placeholder="کد یا نام مشتری...">
+              ${customerCodeOptions('discountCustomerCodes','discount')}
+              <button type="button" onclick="loadDiscountCustomerLines()" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-purple-600 font-medium shrink-0">ادامه</button>
+            </div>
+          </div>
+          <div id="discLineBox" class="hidden mb-3 sm:mb-4">
+            <label class="block text-sm text-slate-300 mb-2">انتخاب لاین *</label>
+            <select id="discLineSelect" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 outline-none text-base"><option value="">لاین را انتخاب کنید</option></select>
+          </div>
+          <div id="discCustomerInfo" class="hidden space-y-3">
+            <div class="grid grid-cols-2 gap-2 text-sm p-3 rounded-xl bg-slate-900/50 border border-slate-700">
+              <div><span class="text-slate-400 text-xs">شعبه</span><p id="di_branch" class="font-medium"></p></div>
+              <div><span class="text-slate-400 text-xs">لاین</span><p id="di_line" class="font-medium"></p></div>
+              <div><span class="text-slate-400 text-xs">کد</span><p id="di_code" class="font-mono text-solico-300"></p></div>
+              <div><span class="text-slate-400 text-xs">شهر</span><p id="di_city"></p></div>
+              <div class="col-span-2"><span class="text-slate-400 text-xs">نام</span><p id="di_name" class="font-bold"></p></div>
+              <div class="col-span-2">
+                <span class="text-slate-400 text-xs">تخفیف فعلی</span>
+                <div id="di_current" class="mt-1.5"></div>
+              </div>
+              <div class="col-span-2"><span class="text-slate-400 text-xs">آدرس</span><p id="di_address" class="text-xs text-slate-300"></p></div>
+            </div>
+            <form id="discountForm" class="space-y-3">
+              <p class="text-sm font-bold text-purple-300">درصد تخفیف درخواستی</p>
+              <div class="grid grid-cols-2 gap-2">
+                ${PRODUCT_GROUPS.map(g => `
+                  <div class="p-2 rounded-lg bg-slate-900/40 border border-slate-700">
+                    <label class="block text-xs text-slate-400 mb-1">${g.fa}</label>
+                    <input type="text" name="req_${g.id}" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" enterkeyhint="next" class="pct-input w-full px-3 py-3 rounded-lg bg-slate-800 border border-slate-600 text-base" placeholder="0">
+                  </div>
+                `).join('')}
+              </div>
+              <textarea name="notes" rows="2" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 text-base" placeholder="توضیحات (اختیاری)"></textarea>
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-purple-600 font-bold text-base sticky bottom-2 shadow-lg">ثبت و ارسال به کارتابل حسابدار</button>
+            </form>
+          </div>
+        </div>`;
+      document.getElementById('discLineSelect').addEventListener('change', showSelectedDiscountCustomer);
+      document.getElementById('discSearch').addEventListener('input', () => refreshCustomerSearchInfo('discSearch','discount'));
+      document.getElementById('discSearch').addEventListener('change', loadDiscountCustomerLines);
+    }
+
+    function loadDiscountCustomerLines() {
+      const records = getCustomerLineRecords(document.getElementById('discSearch').value.trim(),'discount');
+      const box = document.getElementById('discLineBox'), sel = document.getElementById('discLineSelect'), info = document.getElementById('discCustomerInfo');
+      info.classList.add('hidden'); sel.innerHTML='<option value="">لاین را انتخاب کنید</option>';
+      if (!records.length) { box.classList.add('hidden'); showToast('کد مشتری پیدا نشد'); return; }
+      const seen = new Set();
+      let blockedOtherLine = false;
+      records.forEach(c=>{
+        const line=String(c.line||'').trim();
+        if(!line||seen.has(line))return;
+        if (!canAccessCustomerLine(line)) { blockedOtherLine = true; return; }
+        seen.add(line);
+        const branch=c.branchName||getBranchName(c.branchId)||'';
+        sel.insertAdjacentHTML('beforeend',
+          `<option value="${line.replace(/"/g,'&quot;')}">${escapeHtml(line)}${branch ? ' — ' + escapeHtml(branch) : ''}</option>`
+        );
+      });
+      if (!seen.size) {
+        box.classList.add('hidden');
+        showToast(blockedOtherLine
+          ? ('این مشتری فقط در لاین دیگر است. ' + lineAccessError(records.find(c => c.line)?.line))
+          : 'کد مشتری پیدا نشد');
+        return;
+      }
+      box.classList.remove('hidden'); if(seen.size===1){sel.value=[...seen][0];showSelectedDiscountCustomer();}
+    }
+
+    function showSelectedDiscountCustomer() {
+      const code=document.getElementById('discSearch').value.trim(), line=document.getElementById('discLineSelect').value;
+      const cust=getCustomerLineRecords(code,'discount').find(c=>String(c.line||'').trim()===line), info=document.getElementById('discCustomerInfo');
+      if(!cust){info.classList.add('hidden');return;}
+      const branchId=Number(cust.branchId||getBranchIdByName(cust.branchName)||0);
+      if(currentUser.role!=='admin' && branchId && !userBranches(currentUser).includes(branchId)){showToast('به شعبه این مشتری دسترسی ندارید');info.classList.add('hidden');return;}
+      if (!canAccessCustomerLine(cust.line)) {
+        showToast(lineAccessError(cust.line));
+        info.classList.add('hidden');
+        return;
+      }
+      document.getElementById('di_branch').textContent=cust.branchName||getBranchName(branchId);
+      document.getElementById('di_line').textContent=cust.line||'—'; document.getElementById('di_code').textContent=cust.code||'—'; document.getElementById('di_name').textContent=cust.name||'—'; document.getElementById('di_city').textContent=cust.city||'—'; document.getElementById('di_address').textContent=cust.address||'—';
+      document.getElementById('di_current').innerHTML=renderCurrentDiscountRow(cust.discounts||{});
+      info.classList.remove('hidden');
+      document.getElementById('discountForm').onsubmit=e=>{
+        e.preventDefault(); const fd=new FormData(e.target), reqDiscounts={}; let has=false;
+        PRODUCT_GROUPS.forEach(g=>{const v=parseFormattedNumber(fd.get('req_'+g.id));if(v>0){reqDiscounts[g.id]=v;has=true;}});
+        if(!has){showToast('حداقل یک درصد تخفیف وارد کنید');return;}
+        const branchId=Number(cust.branchId||getBranchIdByName(cust.branchName)||currentUser.branchId), list=loadData('discountRequests',[]);
+        list.unshift({id:Date.now(),type:'discount',customerCode:cust.code,customerName:cust.name,line:cust.line||'',branchId,branchName:cust.branchName||getBranchName(branchId),city:cust.city||'',address:cust.address||'',currentDiscounts:{...(cust.discounts||{})},reqDiscounts,notes:fd.get('notes')||'',requestedBy:currentUser.id,requestedByName:currentUser.name||currentUser.username,status:'pending',createdAt:new Date().toISOString(),history:[{action:'created',by:currentUser.name||currentUser.username,at:new Date().toISOString()}]});
+        saveData('discountRequests',list);showToast('درخواست تخفیف به کارتابل حسابدار ارسال شد');e.target.reset();info.classList.add('hidden');document.getElementById('discLineBox').classList.add('hidden');document.getElementById('discSearch').value='';
+      };
+    }
+
+    // ==================== OTHER REQUESTS ====================
+    function renderOtherForm(container) {
+      const defaultRole = currentUser.role === 'accountant' ? 'حسابدار نماینده' : 'مدیر فروش';
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-3xl mx-auto">
+          <h3 class="text-base sm:text-lg font-bold mb-3 sm:mb-5">سایر درخواست‌ها</h3>
+          <p class="text-xs text-slate-400 mb-4">این درخواست مستقیماً برای مدیر سیستم ارسال می‌شود.</p>
+          <form id="otherForm" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-slate-300 mb-2">نقش درخواست‌کننده *</label>
+                <select name="requesterRole" required class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 outline-none text-base">
+                  <option value="مدیر فروش" ${defaultRole === 'مدیر فروش' ? 'selected' : ''}>مدیر فروش</option>
+                  <option value="حسابدار نماینده" ${defaultRole === 'حسابدار نماینده' ? 'selected' : ''}>حسابدار نماینده</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-2">نام درخواست‌کننده</label>
+                <input type="text" name="requesterName" value="${escapeHtml(currentUser.name || currentUser.username)}" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 outline-none text-base" placeholder="نام و نام خانوادگی">
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-2">نام لاین *</label>
+                <select name="lineName" required class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 outline-none text-base">
+                  ${SALES_LINES.map(l => `<option value="${l.name}" ${currentUser.line === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-300 mb-2">نام شعبه *</label>
+                <select name="branchId" required class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 outline-none text-base">
+                  ${BRANCHES.filter(b => userBranches(currentUser).includes(b.id)).map(b => `<option value="${b.id}" ${b.id === currentUser.branchId ? 'selected' : ''}>${b.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">توضیحات درخواست *</label>
+              <textarea name="notes" required rows="4" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-600 focus:border-solico-500 outline-none text-base" placeholder="متن درخواست خود را بنویسید..."></textarea>
+            </div>
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-l from-solico-600 to-solico-500 font-bold shadow-lg transition active:scale-[0.98]">ارسال به مدیر سیستم</button>
+          </form>
+        </div>
+      `;
+      document.getElementById('otherForm').onsubmit = (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const branchId = Number(fd.get('branchId') || currentUser.branchId);
+        const list = loadData('otherRequests', []);
+        list.unshift({
+          id: Date.now(),
+          requesterRole: fd.get('requesterRole') || '',
+          requesterName: fd.get('requesterName') || currentUser.name || currentUser.username,
+          lineName: fd.get('lineName'),
+          branchName: getBranchName(branchId),
+          branchId,
+          notes: fd.get('notes'),
+          requestedBy: currentUser.id,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        saveData('otherRequests', list);
+        showToast('درخواست با موفقیت به مدیر سیستم ارسال شد');
+        e.target.reset();
+        e.target.requesterName.value = currentUser.name || currentUser.username;
+        e.target.lineName.value = currentUser.line || SALES_LINES[0]?.name || '';
+        e.target.branchId.value = currentUser.branchId;
+        e.target.requesterRole.value = defaultRole;
+      };
+    }
+
+    function renderOtherInbox(container) {
+      if (currentUser.role !== 'admin') {
+        container.innerHTML = `<div class="glass rounded-xl p-8 text-center text-slate-400">فقط مدیر سیستم</div>`;
+        return;
+      }
+      const all = loadData('otherRequests', []).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-bold">کارتابل سایر درخواست‌ها</h3>
+            <span class="px-3 py-1 rounded-full bg-solico-500/20 text-solico-300 text-xs sm:text-sm font-bold">${all.length} مورد</span>
+          </div>
+          ${all.length === 0 ? '<p class="text-slate-400 text-center py-10">درخواستی ثبت نشده</p>' : `
+            <div class="space-y-3 sm:space-y-4">
+              ${all.map(r => `
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700">
+                  <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p class="font-bold text-base">${r.requesterName}${r.requesterRole ? ` <span class="text-xs font-normal text-solico-300">(${r.requesterRole})</span>` : ''}</p>
+                      <p class="text-xs text-slate-400 mt-0.5">${r.branchName || '—'} • ${r.lineName || '—'} • ${formatDate(r.createdAt)}</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold ${r.status === 'done' ? 'bg-slate-500/20 text-slate-400' : 'bg-amber-500/20 text-amber-300'}">${r.status === 'done' ? 'مشاهده شده' : 'جدید'}</span>
+                  </div>
+                  <p class="text-sm text-slate-200 mt-2 whitespace-pre-wrap">${r.notes}</p>
+                  ${r.status !== 'done' ? `
+                    <button onclick="markOtherDone(${r.id})" class="mt-3 px-4 py-2 rounded-lg bg-solico-600 hover:bg-solico-500 text-sm font-bold active:scale-[0.98]">علامت به‌عنوان مشاهده‌شده</button>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function markOtherDone(id) {
+      const list = loadData('otherRequests', []);
+      const idx = list.findIndex(r => r.id === id);
+      if (idx === -1) return;
+      list[idx].status = 'done';
+      list[idx].seenAt = new Date().toISOString();
+      list[idx].seenBy = currentUser.name || currentUser.username;
+      saveData('otherRequests', list);
+      showToast('درخواست به‌عنوان مشاهده‌شده علامت خورد');
+      navigate('otherInbox');
+    }
+
+    // ==================== ACCOUNTANT INBOX ====================
+    function renderAccountantInbox(container) {
+      if (currentUser.role !== 'accountant' && currentUser.role !== 'admin') {
+        container.innerHTML = `<div class="glass rounded-xl p-8 text-center text-slate-400">دسترسی ندارید</div>`;
+        return;
+      }
+      const ids = userBranches(currentUser);
+      const credits = loadData('creditRequests', []).filter(r => r.status === 'pending' && (currentUser.role === 'admin' || ids.includes(r.branchId)));
+      const discounts = loadData('discountRequests', []).filter(r => r.status === 'pending' && (currentUser.role === 'admin' || ids.includes(r.branchId)));
+      const all = [...credits.map(r => ({...r, reqType: 'credit'})), ...discounts.map(r => ({...r, reqType: 'discount'}))]
+        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-bold">درخواست‌های در انتظار تایید</h3>
+            <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs sm:text-sm font-bold">${all.length} مورد</span>
+          </div>
+          ${all.length === 0 ? '<p class="text-slate-400 text-center py-10">درخواستی نیست</p>' : `
+            <div class="space-y-3 sm:space-y-4">
+              ${all.map(r => {
+                let details = '';
+                if (r.reqType === 'credit') {
+                  details = `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div class="p-3 rounded-xl bg-slate-900/50 border border-slate-700">
+                      <p class="text-xs text-slate-400 mb-1">اعتبار فعلی</p>
+                      <p>روز ${formatNumber(r.currentDaily||0)} · فاکتور ${formatNumber(r.currentOpenInvoices||0)}</p>
+                      <p class="text-amber-300">ریال ${formatNumber(r.currentRial||0)}</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-solico-600/10 border border-solico-500/30">
+                      <p class="text-xs text-solico-300 mb-1">درخواستی جدید</p>
+                      <p>روز ${formatNumber(r.reqDayCredit||r.reqDaily||0)} · فاکتور ${formatNumber(r.reqInvoices||0)}</p>
+                      <p class="text-solico-300 font-bold">ریال ${formatNumber(r.reqRial||0)}</p>
+                    </div>
+                  </div>`;
+                } else {
+                  details = `<div class="mt-3">
+                    <p class="text-xs text-slate-400 mb-1">تغییر تخفیف گروه‌ها</p>
+                    ${renderDiscountCards(r.currentDiscounts, r.reqDiscounts, true)}
+                  </div>`;
+                }
+                return `
+                  <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="min-w-0 flex-1">
+                        <span class="text-xs px-2 py-0.5 rounded bg-slate-700">${r.reqType === 'credit' ? 'اعتبار' : 'تخفیف'}</span>
+                        <h4 class="font-bold text-base sm:text-lg mt-1 break-words">${r.customerName} <span class="text-xs text-slate-400">(${r.customerCode})</span></h4>
+                        <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-400">
+                          <p><span class="text-slate-500">شعبه:</span> ${r.branchName || getBranchName(r.branchId) || '—'}</p>
+                          <p><span class="text-slate-500">لاین:</span> ${r.line || '—'}</p>
+                          <p><span class="text-slate-500">ثبت:</span> ${formatDate(r.createdAt)}</p>
+                          <p><span class="text-slate-500">درخواست‌کننده:</span> ${r.requestedByName || '—'}</p>
+                          ${r.address ? `<p class="col-span-2"><span class="text-slate-500">آدرس:</span> <span class="text-slate-300">${r.address}</span></p>` : ''}
+                        </div>
+                      </div>
+                      ${statusBadge(r.status)}
+                    </div>
+                    ${details}
+                    ${r.notes ? `<p class="text-sm text-slate-400 mt-2">📝 ${r.notes}</p>` : ''}
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      <button onclick="accountantDecide('${r.reqType}', ${r.id}, 'approved')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-bold active:scale-[0.98]">✓ تایید</button>
+                      <button onclick="accountantDecide('${r.reqType}', ${r.id}, 'rejected')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-sm font-bold active:scale-[0.98]">✗ رد</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function accountantDecide(type, id, decision) {
+      if (currentUser.role !== 'accountant' && currentUser.role !== 'admin') {
+        showToast('فقط حسابدار می‌تواند اقدام کند'); return;
+      }
+      const key = type === 'credit' ? 'creditRequests' : 'discountRequests';
+      const list = loadData(key, []);
+      const idx = list.findIndex(r => r.id === id);
+      if (idx === -1) return;
+      if (currentUser.role !== 'admin' && !userBranches(currentUser).includes(list[idx].branchId)) {
+        showToast('به این شعبه دسترسی ندارید'); return;
+      }
+      list[idx].status = decision === 'approved' ? 'pending_manager' : 'rejected';
+      list[idx].history.push({ action: decision, by: currentUser.name || currentUser.username, at: new Date().toISOString() });
+      saveData(key, list);
+      showToast(decision === 'approved' ? 'تایید شد و به کارتابل مدیر سیستم ارسال شد' : 'درخواست رد شد');
+      navigate('accountantInbox');
+    }
+
+    // ==================== MANAGER INBOX ====================
+    function renderManagerInbox(container) {
+      if (currentUser.role !== 'admin') {
+        container.innerHTML = `<div class="glass rounded-xl p-8 text-center text-slate-400">فقط مدیر سیستم</div>`;
+        return;
+      }
+      const credits = loadData('creditRequests', []).filter(r => r.status === 'pending_manager');
+      const discounts = loadData('discountRequests', []).filter(r => r.status === 'pending_manager');
+      const all = [...credits.map(r => ({...r, reqType: 'credit'})), ...discounts.map(r => ({...r, reqType: 'discount'}))]
+        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-bold">کارتابل مدیر سیستم</h3>
+            <span class="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs sm:text-sm font-bold">${all.length} مورد</span>
+          </div>
+          ${all.length === 0 ? '<p class="text-slate-400 text-center py-10">درخواستی در صف اعمال نیست</p>' : `
+            <div class="space-y-3 sm:space-y-4">
+              ${all.map(r => {
+                let details = '';
+                if (r.reqType === 'credit') {
+                  details = `<div class="mt-2 p-3 rounded-xl bg-solico-600/10 border border-solico-500/30 text-sm">
+                    <p class="text-xs text-solico-300 mb-1">اعتبار درخواستی</p>
+                    <p>روز ${formatNumber(r.reqDayCredit||r.reqDaily||0)} · فاکتور ${formatNumber(r.reqInvoices||0)} · ریال <b class="text-solico-300">${formatNumber(r.reqRial||0)}</b></p>
+                  </div>`;
+                } else {
+                  details = `<div class="mt-2">
+                    <p class="text-xs text-slate-400 mb-1">تغییر تخفیف گروه‌ها</p>
+                    ${renderDiscountCards(r.currentDiscounts, r.reqDiscounts, true)}
+                  </div>`;
+                }
+                const accAct = r.history?.find(h => h.action === 'approved');
+                return `
+                  <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div class="flex items-start gap-3 min-w-0 flex-1">
+                        <span class="light-green mt-1.5 shrink-0"></span>
+                        <div class="min-w-0 flex-1">
+                          <span class="text-xs px-2 py-0.5 rounded bg-slate-700">${r.reqType === 'credit' ? 'اعتبار' : 'تخفیف'}</span>
+                          <h4 class="font-bold text-base sm:text-lg mt-1 break-words">${r.customerName} <span class="text-xs text-slate-400">(${r.customerCode})</span></h4>
+                          <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-400">
+                            <p><span class="text-slate-500">شعبه:</span> ${r.branchName || getBranchName(r.branchId) || '—'}</p>
+                            <p><span class="text-slate-500">لاین:</span> ${r.line || '—'}</p>
+                            <p class="col-span-2"><span class="text-slate-500">تایید حسابدار:</span> ${accAct ? formatDate(accAct.at) + ' — ' + accAct.by : '—'}</p>
+                            ${r.address ? `<p class="col-span-2"><span class="text-slate-500">آدرس:</span> <span class="text-slate-300">${r.address}</span></p>` : ''}
+                          </div>
+                          ${details}
+                        </div>
+                      </div>
+                      <button onclick="managerApply('${r.reqType}', ${r.id})" class="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-solico-600 hover:bg-solico-500 text-sm font-bold transition active:scale-[0.98] shrink-0">ثبت / اعمال</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function managerApply(type, id) {
+      if (currentUser.role !== 'admin') return;
+      const key = type === 'credit' ? 'creditRequests' : 'discountRequests';
+      const list = loadData(key, []);
+      const idx = list.findIndex(r => r.id === id);
+      if (idx === -1) return;
+      list[idx].status = 'done';
+      list[idx].history.push({ action: 'applied', by: currentUser.name || currentUser.username, at: new Date().toISOString() });
+      const custs = loadData('customers', []);
+      const cidx = custs.findIndex(c =>
+        String(c.code || '') === String(list[idx].customerCode || '') &&
+        String(c.line || '') === String(list[idx].line || '') &&
+        Number(c.branchId || getBranchIdByName(c.branchName)) === Number(list[idx].branchId || 0)
+      );
+      if (cidx !== -1) {
+        if (type === 'credit') {
+          if ((list[idx].reqDayCredit || list[idx].reqDaily || 0) > 0) custs[cidx].creditDaily = list[idx].reqDayCredit || list[idx].reqDaily;
+          if ((list[idx].reqInvoices || 0) > 0) custs[cidx].creditInvoices = list[idx].reqInvoices;
+          if ((list[idx].reqRial || 0) > 0) custs[cidx].creditRial = list[idx].reqRial;
+        } else {
+          Object.assign(custs[cidx].discounts, list[idx].reqDiscounts);
+        }
+        saveData('customers', custs);
+      }
+      saveData(key, list);
+      showToast('درخواست اعمال شد — چراغ خاموش شد');
+      navigate('managerInbox');
+    }
+
+    // ==================== HISTORY ====================
+    function renderHistory(container) {
+      const ids = userBranches(currentUser);
+      const credits = loadData('creditRequests', []).filter(r => currentUser.role === 'admin' || ids.includes(r.branchId));
+      const discounts = loadData('discountRequests', []).filter(r => currentUser.role === 'admin' || ids.includes(r.branchId));
+      const all = [...credits.map(r => ({...r, reqType: 'credit'})), ...discounts.map(r => ({...r, reqType: 'discount'}))]
+        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <h3 class="text-base sm:text-lg font-bold mb-4 sm:mb-6">تاریخچه درخواست‌ها (${all.length})</h3>
+          ${all.length === 0 ? '<p class="text-slate-400 text-center py-10">خالی</p>' : `
+            <!-- Mobile cards -->
+            <div class="space-y-3 md:hidden">
+              ${all.map(r => {
+                const acc = r.history?.find(h => h.action === 'approved' || h.action === 'rejected');
+                const mgr = r.history?.find(h => h.action === 'applied');
+                const light = r.status === 'done' ? 'light-black' : (r.status === 'pending_manager' || r.status === 'pending' ? 'light-green' : 'light-black');
+                return `
+                  <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="${light}"></span>
+                      ${statusBadge(r.status)}
+                      <span class="text-xs text-slate-500">${r.reqType === 'credit' ? 'اعتبار' : 'تخفیف'}</span>
+                    </div>
+                    <p class="font-bold">${r.customerName} <span class="text-xs text-slate-400">(${r.customerCode})</span></p>
+                    <p class="text-xs text-slate-400 mt-1">${getBranchName(r.branchId)} • ${formatDate(r.createdAt)}</p>
+                    <p class="text-xs text-slate-400 mt-1">حسابدار: ${acc ? formatDate(acc.at) + ' — ' + acc.by : '—'}</p>
+                    <p class="text-xs text-slate-400">مدیر: ${mgr ? formatDate(mgr.at) + ' — ' + mgr.by : '—'}</p>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <!-- Desktop table -->
+            <div class="hidden md:block overflow-x-auto">
+              <table class="w-full text-sm table-fixed">
+                <thead>
+                  <tr class="text-slate-400 border-b border-slate-700">
+                    <th class="py-3 text-right">چراغ</th>
+                    <th class="py-3 text-right">نوع</th>
+                    <th class="py-3 text-right">مشتری</th>
+                    <th class="py-3 text-right">شعبه</th>
+                    <th class="py-3 text-right">وضعیت</th>
+                    <th class="py-3 text-right">اقدام حسابدار</th>
+                    <th class="py-3 text-right">اعمال مدیر</th>
+                    <th class="py-3 text-right">تاریخ ثبت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${all.map(r => {
+                    const acc = r.history?.find(h => h.action === 'approved' || h.action === 'rejected');
+                    const mgr = r.history?.find(h => h.action === 'applied');
+                    const light = r.status === 'done' ? 'light-black' : (r.status === 'pending_manager' || r.status === 'pending' ? 'light-green' : 'light-black');
+                    return `
+                      <tr class="border-b border-slate-800 hover:bg-slate-800/40">
+                        <td class="py-3"><span class="${light}"></span></td>
+                        <td class="py-3">${r.reqType === 'credit' ? 'اعتبار' : 'تخفیف'}</td>
+                        <td class="py-3 font-medium">${r.customerName}<br><span class="text-xs text-slate-500">${r.customerCode}</span></td>
+                        <td class="py-3">${getBranchName(r.branchId)}</td>
+                        <td class="py-3">${statusBadge(r.status)}</td>
+                        <td class="py-3 text-slate-300 text-xs">${acc ? formatDate(acc.at) + '<br>' + acc.by : '—'}</td>
+                        <td class="py-3 text-slate-300 text-xs">${mgr ? formatDate(mgr.at) + '<br>' + mgr.by : '—'}</td>
+                        <td class="py-3 text-slate-400 text-xs">${formatDate(r.createdAt)}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // ==================== CUSTOMERS ====================
+    function renderCustomers(container) {
+      const rawCustomers = loadData('customers', DEFAULT_CUSTOMERS);
+      const customers = Array.isArray(rawCustomers) ? rawCustomers : Object.values(rawCustomers || {});
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 class="text-base sm:text-lg font-bold">مدیریت مشتریان (${customers.length})</h3>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="exportCreditExcel()" class="btn-mini bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50">خروجی اکسل اعتبار</button>
+              <label class="btn-mini bg-solico-600/30 text-solico-300 hover:bg-solico-600/50 cursor-pointer">
+                ورود اکسل اعتبار
+                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importCreditExcel(event)">
+              </label>
+              <button onclick="exportDiscountExcel()" class="btn-mini bg-purple-600/30 text-purple-300 hover:bg-purple-600/50">خروجی اکسل تخفیف</button>
+              <label class="btn-mini bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 cursor-pointer">
+                ورود اکسل تخفیف
+                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importDiscountExcel(event)">
+              </label>
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/50 border border-slate-700 text-xs text-slate-400 space-y-1">
+            <p class="font-bold text-solico-300">راهنمای ورود اکسل اعتبار</p>
+            <p>ستون‌ها به ترتیب: <b class="text-white">نام شعبه</b> | نام لاین | کد مشتری | نام | شهر | آدرس | اعتبار روزانه | تعداد فاکتور باز | اعتبار ریالی</p>
+            <p>نام شعبه باید دقیقاً یکی از این‌ها باشد: <span class="text-amber-300">${allowedBranchNames()}</span></p>
+            <p>نام لاین: <span class="text-amber-300">انجمادی، سولیکو، متفرقه، بستنی</span></p>
+            <p>ابتدا «خروجی اکسل اعتبار» را بگیرید، پر کنید، بعد «ورود اکسل اعتبار» بزنید.</p>
+          </div>
+          <!-- Mobile cards -->
+          <div class="space-y-3 md:hidden">
+            ${customers.map(c => `
+              <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-sm">
+                <p class="text-xs text-solico-300">${c.line || "—"}</p>
+                <p class="font-mono text-solico-300 text-xs">${c.code}</p>
+                <p class="font-bold mt-0.5">${c.name}</p>
+                <p class="text-xs text-slate-400">${c.city}</p>
+                <p class="text-xs mt-1">روزانه: ${formatNumber(c.creditDaily)} | فاکتور باز: ${formatNumber(c.openInvoices ?? c.openInvoiceCount ?? 0)} | ریالی: ${formatNumber(c.creditRial)}</p>
+                <p class="text-[10px] text-slate-500 mt-1">${PRODUCT_GROUPS.map(g => `${g.name}:${c.discounts?.[g.id]||0}%`).join(' ')}</p>
+              </div>
+            `).join('')}
+          </div>
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-700">
+                  <th class="py-2 text-right">نام شعبه</th><th class="py-2 text-right">نام لاین</th>
+                  <th class="py-2 text-right">کد</th>
+                  <th class="py-2 text-right">نام</th>
+                  <th class="py-2 text-right">شهر</th>
+                  <th class="py-2 text-right">اعتبار روزانه</th>
+                  <th class="py-2 text-right">تعداد فاکتور باز</th>
+                  <th class="py-2 text-right">اعتبار ریالی</th>
+                  <th class="py-2 text-right">تخفیف‌ها</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${customers.map(c => `
+                  <tr class="border-b border-slate-800 hover:bg-slate-800/40">
+                    <td class="py-2">${c.branchName || getBranchName(c.branchId) || "—"}</td>
+                    <td class="py-2">${c.line || "—"}</td>
+                    <td class="py-2 font-mono text-solico-300">${c.code}</td>
+                    <td class="py-2">${c.name}</td>
+                    <td class="py-2">${c.city}</td>
+                    <td class="py-2">${formatNumber(c.creditDaily)}</td>
+                    <td class="py-2">${formatNumber(c.openInvoices ?? c.openInvoiceCount ?? 0)}</td>
+                    <td class="py-2">${formatNumber(c.creditRial)}</td>
+                    <td class="py-2 text-xs">${PRODUCT_GROUPS.map(g => `${g.name}:${c.discounts?.[g.id]||0}%`).join(' ')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function exportCreditExcel() {
+      // قالب ورود مشتری — ستون اول نام شعبه
+      // نام شعبه‌ها باید دقیقاً یکی از لیست سیستم باشد
+      // لاین: انجمادی | سولیکو | متفرقه | بستنی
+      const headers = [
+        'نام شعبه', 'نام لاین', 'کد مشتری', 'نام', 'شهر', 'آدرس',
+        'اعتبار روزانه', 'تعداد فاکتور باز', 'اعتبار ریالی'
+      ];
+      // یک ردیف نمونه راهنما + چند ردیف خالی
+      const sample = [
+        headers,
+        ['ساری', 'سولیکو', 'C1001', 'فروشگاه نمونه', 'ساری', 'خیابان انقلاب', 10, 2, 50000000],
+        ['آمل', 'انجمادی', '', '', '', '', '', '', ''],
+        ['گرگان', 'بستنی', '', '', '', '', '', '', ''],
+        ['بهشهر', 'متفرقه', '', '', '', '', '', '', '']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(sample);
+      // عرض ستون‌ها
+      ws['!cols'] = headers.map(() => ({ wch: 16 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Credit');
+      XLSX.writeFile(wb, 'solico_credit_template.xlsx');
+      showToast('قالب اکسل اعتبار دانلود شد — نام شعبه را دقیقاً از لیست شعب بنویسید');
+    }
+    function exportDiscountExcel() {
+      const rows = loadData('customers', []).map(c => ({
+        branchName: c.branchName || getBranchName(c.branchId) || '',
+        line: c.line || '', code: c.code, name: c.name, city: c.city, address: c.address || '',
+        meat: c.discounts?.meat || 0, sauceBucket: c.discounts?.sauceBucket || 0,
+        sauce: c.discounts?.sauce || 0, pemina: c.discounts?.pemina || 0, mak: c.discounts?.mak || 0,
+        aris: c.discounts?.aris || 0, butter: c.discounts?.butter || 0, iceCream: c.discounts?.iceCream || 0
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows, {
+        header: ['branchName', 'line', 'code', 'name', 'city', 'address', 'meat', 'sauceBucket', 'sauce', 'pemina', 'mak', 'aris', 'butter', 'iceCream']
+      });
+      XLSX.utils.sheet_add_aoa(ws, [[
+        'نام شعبه', 'نام لاین', 'کد مشتری', 'نام', 'شهر', 'آدرس',
+        'Meat', 'Souce bucket', 'Souce', 'Pemina', 'Mak', 'Aris', 'Butter', 'Ice cream'
+      ]], { origin: 'A1' });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Discount');
+      XLSX.writeFile(wb, 'solico_discount.xlsx');
+      showToast('اکسل تخفیف دانلود شد (ستون اول: نام شعبه)');
+    }
+    function importCreditExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          // خواندن هم با هدر و هم سطری (برای وقتی هدر جور نیست)
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+          const rowsAoA = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+
+          let customers = asArray(loadData('customers', []));
+          const MAX_CUSTOMERS = 70000;
+          let added = 0, updated = 0, skipped = 0;
+          const errors = [];
+
+          const toNumber = (v, fallback = 0) => {
+            if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
+            const s = String(v ?? '')
+              .replace(/,/g, '').replace(/٬/g, '')
+              .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+              .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+              .trim();
+            if (!s) return fallback;
+            const n = Number(s);
+            return Number.isFinite(n) ? n : fallback;
+          };
+
+          // تطابق دقیق هدر، بعد جزئی (بدون قاطی شدن «نام» با «نام شعبه»)
+          const valFromRow = (row, keys) => {
+            const rowKeys = Object.keys(row || {});
+            // 1) exact
+            for (const want of keys) {
+              const nw = normalizeSearch(want);
+              for (const rk of rowKeys) {
+                if (normalizeSearch(rk) === nw) {
+                  const v = row[rk];
+                  if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+                }
+              }
+            }
+            // 2) includes فقط اگر want حداقل ۳ حرف و کلید کوتاه‌تر از want نباشد اشتباه نشود
+            for (const want of keys) {
+              const nw = normalizeSearch(want);
+              if (nw.length < 2) continue;
+              for (const rk of rowKeys) {
+                const nr = normalizeSearch(rk);
+                // «نام» نباید «نام شعبه» را بگیرد
+                if (nw === 'نام' && (nr.includes('شعبه') || nr.includes('لاین') || nr.includes('کاربر'))) continue;
+                if (nr === nw) continue;
+                if (nr.includes(nw) && nr.length <= nw.length + 4) {
+                  const v = row[rk];
+                  if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+                }
+              }
+            }
+            return '';
+          };
+
+          // تشخیص اینکه آیا ردیف اول هدر است
+          const headerHints = ['نام شعبه', 'شعبه', 'لاین', 'کد', 'code', 'branch', 'line'];
+          const firstRow = rowsAoA[0] || [];
+          const firstIsHeader = firstRow.some(c => headerHints.some(h => normalizeSearch(c).includes(normalizeSearch(h))));
+
+          const detectedHeaders = json.length ? Object.keys(json[0]).join(' | ') : '(خالی)';
+
+          // اگر json خالی بود یا هدر خوانده نشد، از موقعیت ستون استفاده کن
+          const usePosition = !json.length || !firstIsHeader;
+
+          const processOne = (rawBranch, line, code, name, city, address, creditDaily, openInvoices, creditRial, rowIndex) => {
+            rawBranch = String(rawBranch ?? '').trim();
+            line = String(line ?? '').trim();
+            code = String(code ?? '').trim();
+            name = String(name ?? '').trim();
+            city = String(city ?? '').trim();
+            address = String(address ?? '').trim();
+
+            if (!rawBranch && !line && !code && !name) {
+              skipped++;
+              return;
+            }
+            if (normalizeSearch(code) === 'c1001' && normalizeSearch(name).includes('نمونه')) {
+              skipped++;
+              return;
+            }
+            if (!code) {
+              skipped++;
+              errors.push(`ردیف ${rowIndex}: کد مشتری خالی است`);
+              return;
+            }
+
+            // لاین پیش‌فرض
+            if (!line) line = 'سولیکو';
+            const matchedLine = SALES_LINES.find(l => normalizeSearch(l.name) === normalizeSearch(line)
+              || normalizeSearch(line).includes(normalizeSearch(l.name)));
+            if (matchedLine) line = matchedLine.name;
+
+            // شعبه: اول نام شعبه، بعد شهر، بعد پیش‌فرض ساری
+            let branchId = getBranchIdByName(rawBranch);
+            if (!branchId && city) branchId = getBranchIdByName(city);
+            if (!branchId && rawBranch) {
+              // آخرین تلاش: شامل بودن
+              const q = normalizeSearch(rawBranch);
+              const hit = BRANCHES.find(b => q.includes(normalizeSearch(b.name)) || normalizeSearch(b.name).includes(q));
+              if (hit) branchId = hit.id;
+            }
+            if (!branchId) {
+              skipped++;
+              errors.push(`ردیف ${rowIndex}: شعبه «${rawBranch || '—'}» نامعتبر. مجاز: ${allowedBranchNames()}`);
+              return;
+            }
+            const branchName = getBranchName(branchId);
+
+            const idx = customers.findIndex(c =>
+              normalizeSearch(c.code) === normalizeSearch(code) &&
+              normalizeSearch(c.line || '') === normalizeSearch(line) &&
+              Number(c.branchId || getBranchIdByName(c.branchName) || 0) === Number(branchId)
+            );
+            const old = idx >= 0 ? customers[idx] : null;
+
+            const data = {
+              branchId,
+              branchName,
+              line,
+              code,
+              name: name || (old?.name || ''),
+              city: city || (old?.city || branchName || ''),
+              address: address || (old?.address || ''),
+              creditDaily: toNumber(creditDaily, old?.creditDaily || 0),
+              openInvoices: toNumber(openInvoices, old?.openInvoices ?? old?.openInvoiceCount ?? 0),
+              creditInvoices: toNumber(openInvoices, old?.creditInvoices ?? old?.openInvoices ?? 0),
+              creditRial: toNumber(creditRial, old?.creditRial || 0),
+              hasCredit: true,
+              hasDiscount: old ? old.hasDiscount === true : false,
+              discounts: old?.discounts || { meat:0,sauceBucket:0,sauce:0,pemina:0,mak:0,aris:0,butter:0,iceCream:0 }
+            };
+
+            if (idx >= 0) {
+              customers[idx] = data;
+              updated++;
+            } else {
+              if (customers.length >= MAX_CUSTOMERS) {
+                skipped++;
+                errors.push(`ردیف ${rowIndex}: ظرفیت پر است`);
+                return;
+              }
+              customers.push(data);
+              added++;
+            }
+          };
+
+          if (!usePosition && json.length) {
+            json.forEach((row, i) => {
+              try {
+                processOne(
+                  valFromRow(row, ['نام شعبه', 'شعبه', 'branchName', 'BranchName']),
+                  valFromRow(row, ['نام لاین', 'لاین', 'line', 'Line']),
+                  valFromRow(row, ['کد مشتری', 'کد', 'code', 'Code']),
+                  valFromRow(row, ['نام مشتری', 'نام', 'name', 'Name']),
+                  valFromRow(row, ['شهر', 'city', 'City']),
+                  valFromRow(row, ['آدرس', 'address', 'Address']),
+                  valFromRow(row, ['اعتبار روزانه', 'creditDaily', 'CreditDaily']),
+                  valFromRow(row, ['تعداد فاکتور باز', 'تعداد فاکتور', 'openInvoices', 'OpenInvoices']),
+                  valFromRow(row, ['اعتبار ریالی', 'creditRial', 'CreditRial']),
+                  i + 2
+                );
+              } catch (err) {
+                skipped++;
+                errors.push(`ردیف ${i + 2}: ${err?.message || 'خطا'}`);
+              }
+            });
+          } else {
+            // ستون‌ها به ترتیب ثابت: شعبه | لاین | کد | نام | شهر | آدرس | روزانه | فاکتور | ریالی
+            const start = firstIsHeader ? 1 : 0;
+            for (let i = start; i < rowsAoA.length; i++) {
+              const r = rowsAoA[i] || [];
+              try {
+                processOne(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], i + 1);
+              } catch (err) {
+                skipped++;
+                errors.push(`ردیف ${i + 1}: ${err?.message || 'خطا'}`);
+              }
+            }
+          }
+
+          if (added + updated === 0) {
+            alert(
+              'هیچ مشتری‌ای وارد نشد.\n\n' +
+              'هدرهای شناسایی‌شده در فایل:\n' + detectedHeaders + '\n\n' +
+              'ترتیب درست ستون‌ها:\n' +
+              'نام شعبه | نام لاین | کد مشتری | نام | شهر | آدرس | اعتبار روزانه | تعداد فاکتور باز | اعتبار ریالی\n\n' +
+              'شعبه‌های مجاز:\n' + allowedBranchNames() + '\n\n' +
+              'لاین‌ها: انجمادی، سولیکو، متفرقه، بستنی\n\n' +
+              (errors.length ? 'نمونه خطاها:\n' + errors.slice(0, 12).join('\n') : '')
+            );
+            e.target.value = '';
+            return;
+          }
+
+          showToast('در حال ذخیره ' + customers.length + ' مشتری در سرور...');
+          Promise.resolve(saveData('customers', customers)).then(async (ok) => {
+            let serverCount = null;
+            if (ok && firebaseReady && db) {
+              try {
+                const snap = await db.ref('customers').once('value');
+                serverCount = asArray(snap.val()).length;
+              } catch (_) { /* ignore */ }
+            }
+            const msg = `✓ ورود: ${added} جدید، ${updated} بروزرسانی، ${skipped} رد — جمع: ${customers.length}`;
+            let persist;
+            if (!firebaseReady) {
+              persist = '\n⚠ آفلاین — فقط این مرورگر (بقیه نمی‌بینند)';
+            } else if (!ok) {
+              persist = '\n⚠ ذخیره سرور ناموفق — Rules را چک کنید';
+            } else if (serverCount != null && serverCount < customers.length) {
+              persist = `\n⚠ سرور فقط ${serverCount} رکورد دارد (انتظار ${customers.length}) — دوباره تلاش کنید`;
+              ok = false;
+            } else {
+              persist = `\n✓ در سرور ذخیره شد (${serverCount ?? customers.length} مشتری) — همه آنلاین می‌بینند`;
+            }
+            showToast(msg);
+            alert(msg + persist + (errors.length ? '\n\nنمونه خطاها:\n' + errors.slice(0, 10).join('\n') : ''));
+            navigate('customers');
+          });
+        } catch (err) {
+          console.error(err);
+          showToast('خطا در خواندن فایل اکسل');
+          alert('خطا در خواندن فایل: ' + (err?.message || 'ساختار فایل قابل خواندن نیست'));
+        }
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function importDiscountExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+          const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+          let customers = loadData('customers', []);
+          json.forEach(row => {
+            const branchName = String(row.branchName || row.BranchName || row['نام شعبه'] || row['شعبه'] || '').trim();
+            const branchId = getBranchIdByName(branchName);
+            let line = String(row.line || row.Line || row['نام لاین'] || row['لاین'] || '').trim();
+            const code = String(row.code || row.Code || row['کد'] || row['کد مشتری'] || '').trim();
+            if (!code || !line) return;
+            const matchedLine = SALES_LINES.find(l => normalizeSearch(l.name) === normalizeSearch(line));
+            if (matchedLine) line = matchedLine.name;
+            const idx = customers.findIndex(c =>
+              normalizeSearch(c.code) === normalizeSearch(code) &&
+              normalizeSearch(c.line) === normalizeSearch(line) &&
+              Number(c.branchId || getBranchIdByName(c.branchName)) === Number(branchId)
+            );
+            const discounts = {
+              meat: Number(row.meat ?? row.Meat ?? 0),
+              sauceBucket: Number(row.sauceBucket ?? row['Souce bucket'] ?? row.SouceBucket ?? 0),
+              sauce: Number(row.sauce ?? row.Souce ?? 0),
+              pemina: Number(row.pemina ?? row.Pemina ?? 0),
+              mak: Number(row.mak ?? row.Mak ?? 0),
+              aris: Number(row.aris ?? row.Aris ?? 0),
+              butter: Number(row.butter ?? row.Butter ?? 0),
+              iceCream: Number(row.iceCream ?? row['Ice cream'] ?? row.IceCream ?? 0)
+            };
+            if (idx >= 0) {
+              customers[idx].branchId = branchId || customers[idx].branchId;
+              customers[idx].branchName = branchName || customers[idx].branchName || getBranchName(customers[idx].branchId);
+              customers[idx].line = line || customers[idx].line || '';
+              customers[idx].discounts = discounts;
+              customers[idx].hasDiscount = true;
+            } else {
+              customers.push({
+                branchId: branchId || null, branchName: branchName || '',
+                line, code, name: String(row.name || '').trim(), city: String(row.city || '').trim(),
+                address: String(row.address || row.Address || row['آدرس'] || '').trim(),
+                creditDaily: 0, creditRial: 0, creditInvoices: 0, openInvoices: 0, hasCredit: false, hasDiscount: true, discounts
+              });
+            }
+          });
+          saveData('customers', customers);
+          showToast('اکسل تخفیف با موفقیت وارد شد');
+          navigate('customers');
+        } catch { showToast('خطا در خواندن فایل'); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // ==================== USERS MANAGEMENT ====================
+    function renderUsers(container) {
+      const users = loadData('users', DEFAULT_USERS);
+      container.innerHTML = `
+        <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+            <h3 class="text-base sm:text-lg font-bold">مدیریت کاربران (${users.length})</h3>
+            <button onclick="openUserModal()" class="px-4 py-2.5 rounded-lg bg-solico-600 hover:bg-solico-500 text-sm font-bold transition active:scale-[0.98]">+ کاربر جدید</button>
+          </div>
+          <!-- Mobile cards -->
+          <div class="space-y-3 md:hidden">
+            ${users.map(u => `
+              <div class="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-sm">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold">${roleLabel(u.role)}</span>
+                  <div class="flex gap-1.5">
+                    <button onclick="openUserModal(${u.id})" class="px-2.5 py-1 rounded bg-solico-600/30 text-solico-300 text-xs">ویرایش</button>
+                    ${u.username !== 'admin' ? `<button onclick="deleteUser(${u.id})" class="px-2.5 py-1 rounded bg-red-500/20 text-red-400 text-xs">حذف</button>` : ''}
+                  </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">${getBranchName(u.branchId)} • ${u.position || '—'} • ${u.line || '—'}</p>
+                <p class="font-mono text-solico-300 text-xs mt-1">${u.username} / ${u.password}</p>
+              </div>
+            `).join('')}
+          </div>
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 border-b border-slate-700">
+                  <th class="py-3 text-right">نوع کاربر</th>
+                  <th class="py-3 text-right">نام شعبه</th>
+                  <th class="py-3 text-right">سمت</th>
+                  <th class="py-3 text-right">نام لاین</th>
+                  <th class="py-3 text-right">نام کاربری</th>
+                  <th class="py-3 text-right">پسورد</th>
+                  <th class="py-3 text-right">عملیات</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${users.map(u => `
+                  <tr class="border-b border-slate-800 hover:bg-slate-800/40">
+                    <td class="py-3">${roleLabel(u.role)}</td>
+                    <td class="py-3">${getBranchName(u.branchId)}</td>
+                    <td class="py-3">${u.position || '—'}</td>
+                    <td class="py-3">${u.line || '—'}</td>
+                    <td class="py-3 font-mono text-solico-300">${u.username}</td>
+                    <td class="py-3 font-mono text-slate-400">${u.password}</td>
+                    <td class="py-3">
+                      <div class="flex gap-2">
+                        <button onclick="openUserModal(${u.id})" class="px-2.5 py-1 rounded bg-solico-600/30 text-solico-300 text-xs hover:bg-solico-600/50">ویرایش</button>
+                        ${u.username !== 'admin' ? `<button onclick="deleteUser(${u.id})" class="px-2.5 py-1 rounded bg-red-500/20 text-red-400 text-xs hover:bg-red-500/30">حذف</button>` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function openUserModal(id = null) {
+      const modal = document.getElementById('userModal');
+      const title = document.getElementById('userModalTitle');
+      const branchSelect = document.getElementById('uf_branch');
+      branchSelect.innerHTML = BRANCHES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+      if (id) {
+        const users = loadData('users', DEFAULT_USERS);
+        const u = users.find(x => x.id === id);
+        if (!u) return;
+        title.textContent = 'ویرایش کاربر';
+        document.getElementById('editUserId').value = u.id;
+        document.getElementById('uf_role').value = u.role;
+        document.getElementById('uf_branch').value = u.branchId;
+        document.getElementById('uf_position').value = u.position || '';
+        document.getElementById('uf_line').value = u.line || '';
+        document.getElementById('uf_username').value = u.username;
+        document.getElementById('uf_password').value = u.password;
+      } else {
+        title.textContent = 'کاربر جدید';
+        document.getElementById('editUserId').value = '';
+        document.getElementById('userForm').reset();
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('userModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    document.getElementById('userForm').onsubmit = (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editUserId').value;
+      const role = document.getElementById('uf_role').value;
+      const branchId = Number(document.getElementById('uf_branch').value);
+      const position = document.getElementById('uf_position').value.trim();
+      const line = document.getElementById('uf_line').value.trim();
+      const username = document.getElementById('uf_username').value.trim();
+      const password = document.getElementById('uf_password').value;
+      let users = loadData('users', DEFAULT_USERS);
+
+      if (id) {
+        const idx = users.findIndex(u => u.id === Number(id));
+        if (idx === -1) return;
+        if (users.some(u => u.username === username && u.id !== Number(id))) {
+          showToast('نام کاربری تکراری است'); return;
+        }
+        users[idx] = {
+          ...users[idx],
+          role, branchId, position, line, username, password,
+          name: users[idx].name || username
+        };
+        showToast('کاربر ویرایش شد');
+      } else {
+        if (users.some(u => u.username === username)) {
+          showToast('نام کاربری تکراری است'); return;
+        }
+        users.push({
+          id: Date.now(), username, password, role, branchId, position, line,
+          name: username
+        });
+        showToast('کاربر جدید اضافه شد');
+      }
+      saveData('users', users);
+      // اگر کاربر فعلی ویرایش شد، session را هم به‌روز کن
+      if (currentUser && id && Number(currentUser.id) === Number(id)) {
+        currentUser = users.find(u => u.id === Number(id)) || currentUser;
+        localStorage.setItem('solico3_session', JSON.stringify(currentUser));
+      }
+      closeUserModal();
+      navigate('users');
+    };
+
+    function deleteUser(id) {
+      if (!confirm('آیا از حذف این کاربر مطمئن هستید؟')) return;
+      let users = loadData('users', DEFAULT_USERS).filter(u => u.id !== id);
+      saveData('users', users);
+      showToast('کاربر حذف شد');
+      navigate('users');
+    }
+
+    // ==================== SHOW APP ====================
+    function showApp() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('userDisplayName').textContent = currentUser.name || currentUser.username;
+      document.getElementById('userRoleLabel').textContent = roleLabel(currentUser.role);
+      document.getElementById('userAvatar').textContent = (currentUser.name || currentUser.username)[0];
+      const cityName = getBranchName(currentUser.branchId) || 'سراسری';
+      document.getElementById('userCitiesLabel').textContent = cityName;
+      const mobCity = document.getElementById('userCitiesLabelMobile');
+      if (mobCity) mobCity.textContent = cityName;
+      renderCityMap();
+      buildSidebar();
+      setTimeout(() => {
+        const first = document.querySelector('.sidebar-item');
+        if (first) first.click();
+      }, 50);
+    }
+
+    // INIT
+    document.getElementById('loginForm').onsubmit = (e) => {
+      e.preventDefault();
+      login(document.getElementById('username').value.trim(), document.getElementById('password').value);
+    };
+
+    // Show status on login screen
+    function updateOnlineBadge(online) {
+      let badge = document.getElementById('onlineBadge');
+      if (!badge) {
+        const form = document.getElementById('loginForm');
+        if (!form) return;
+        badge = document.createElement('div');
+        badge.id = 'onlineBadge';
+        badge.className = 'mt-3 text-center text-xs';
+        form.parentNode.insertBefore(badge, form.nextSibling);
+      }
+      if (online) {
+        const n = asArray(cache.customers).length;
+        badge.innerHTML = `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> آنلاین — همگام‌سازی فعال${n ? ' — ' + n + ' مشتری' : ''}</span>`;
+      } else {
+        badge.innerHTML = '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300">آفلاین / قطع از سرور — داده فقط روی این دستگاه</span>';
+      }
+    }
+
+    initFirebase().then((ok) => {
+      updateOnlineBadge(ok);
+      // منبع حقیقت وقتی آنلاین است = Firebase
+      // localStorage فقط وقتی سرور خالی است به‌عنوان پشتیبان استفاده می‌شود
+      try {
+        const localRaw = localStorage.getItem('solico3_customers');
+        const localArr = localRaw ? asArray(JSON.parse(localRaw)) : [];
+        const remoteArr = asArray(cache.customers);
+        if (ok) {
+          if (remoteArr.length > 0) {
+            cache.customers = remoteArr;
+            try {
+              localStorage.setItem('solico3_customers', JSON.stringify(remoteArr));
+              localStorage.setItem('solico3_customers_count', String(remoteArr.length));
+            } catch (_) { /* ignore quota */ }
+            console.log('Using Firebase customers:', remoteArr.length);
+          } else if (localArr.length > 0) {
+            // سرور خالی است — یک‌بار از محلی بازیابی و به سرور بفرست
+            console.warn('Firebase empty — uploading local customers', localArr.length);
+            cache.customers = localArr;
+            localWriteGuard.customers = Date.now();
+            const payload = localArr.reduce((acc, item, i) => { acc[i] = item; return acc; }, {});
+            db.ref('customers').set(payload).then(() => {
+              console.log('Local customers uploaded to Firebase');
+            }).catch(err => console.error('Upload failed', err));
+          }
+        } else if (localArr.length > 0) {
+          cache.customers = localArr;
+        }
+      } catch (err) {
+        console.warn('Customer recovery failed', err);
+      }
+      checkSession();
+    });
+  </script>
+
+<script>
+/* اسکریپت قدیمی درصد حذف شد تا ورود عدد راحت‌تر باشد */
+</script>
+
+</body>
+</html>
