@@ -316,21 +316,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     // ==================== FIREBASE CONFIG ====================
     // ⚠️ این بخش را بعد از ساخت پروژه Firebase پر کنید
     // راهنما پایین صفحه لاگین و در README آمده است
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyA7HYj0aJod48sKFaUuHcM_2b3sPlTbGb0",
-      authDomain: "solico-north.firebaseapp.com",
-      databaseURL: "https://solico-north-default-rtdb.firebaseio.com",
-      projectId: "solico-north",
-      storageBucket: "solico-north.firebasestorage.app",
-      messagingSenderId: "457422513744",
-      appId: "1:457422513744:web:3e52d312357d14380e1355",
-      measurementId: "G-3KDSC4S993"
-    };
+   const FIREBASE_CONFIG = {
+  databaseURL: "https://solico-sync.b-khossravi-049.workers.dev/api"
+};
 
-    function isFirebaseConfigured() {
-      return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY"
-        && FIREBASE_CONFIG.databaseURL && !FIREBASE_CONFIG.databaseURL.includes("YOUR_PROJECT");
-    }
+function isFirebaseConfigured() {
+  return !!FIREBASE_CONFIG.databaseURL;
+}
 
     // ==================== STORAGE (Firebase + fallback local) ====================
     const localWriteGuard = { customers: 0 };
@@ -403,7 +395,33 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     // این نسخه عمداً برای همگام‌سازی مشترک از REST استفاده می‌کند.
     // روی بعضی شبکه‌ها Firebase Realtime SDK/WebSocket وصل نمی‌شود،
     // در حالی که REST کاملاً در دسترس است (همین موضوع باعث «آفلاین» شدن می‌شد).
-    async function fetchServerData(key) {
+ async function fetchServerData(key) {
+  const base = FIREBASE_CONFIG.databaseURL.replace(/\/$/, '');
+
+  const res = await fetch(
+    base + '/' + encodeURIComponent(key),
+    {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error('HTTP ' + res.status + ' برای ' + key);
+  }
+
+  const val = await res.json();
+
+  if (key === 'customers') return asArray(val);
+
+  if (val === null) {
+    return key === 'users' ? DEFAULT_USERS : [];
+  }
+
+  return val;
+}
       const base = FIREBASE_CONFIG.databaseURL.replace(/\/$/, '');
       const res = await fetch(base + '/' + encodeURIComponent(key) + '.json', {
         cache: 'no-store',
@@ -420,7 +438,34 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
       return fetchServerData('customers');
     }
 
-    async function putServerData(key, data) {
+  async function putServerData(key, data) {
+  const base = FIREBASE_CONFIG.databaseURL.replace(/\/$/, '');
+
+  const res = await fetch(
+    base + '/' + encodeURIComponent(key),
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(data),
+      cache: 'no-store'
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+
+    throw new Error(
+      'HTTP ' +
+      res.status +
+      (body ? ' — ' + body.slice(0, 180) : '')
+    );
+  }
+
+  return true;
+}
       const base = FIREBASE_CONFIG.databaseURL.replace(/\/$/, '');
       const res = await fetch(base + '/' + encodeURIComponent(key) + '.json', {
         method: 'PUT',
@@ -589,7 +634,26 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
       return Promise.resolve(!!cache[key]);
     }
 
-    function initFirebase() {
+  function initFirebase() {
+  return syncAllFromServer(false)
+    .then(ok => {
+      window.__firebaseConnected = !!ok;
+      updateOnlineBadge(!!ok);
+      updateCustomerSyncStatus();
+      startRestSync();
+      return !!ok;
+    })
+    .catch(err => {
+      console.warn('Initial Worker sync failed:', err);
+
+      window.__firebaseConnected = false;
+      updateOnlineBadge(false);
+      updateCustomerSyncStatus();
+      startRestSync();
+
+      return false;
+    });
+}
       // مهم: صفحه ورود هرگز منتظر WebSocket/SDK نمی‌ماند.
       // REST روی همین پروژه در مرورگر قابل دسترسی است، پس آن را معیار اتصال قرار می‌دهیم.
       if (!isFirebaseConfigured()) {
